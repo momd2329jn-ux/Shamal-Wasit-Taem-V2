@@ -664,20 +664,33 @@ $('postForm').addEventListener('submit', async e => {
     showMessage(id ? 'تم تعديل المنشور بنجاح.' : 'تمت إضافة المنشور بنجاح.', true);
     resetForm();
     await loadPosts();
+} catch (err) {
+    console.error('SAVE POST ERROR:', err);
 
-  } catch (err) {
-    console.error(err);
+    const code = err?.code || '';
+    const message = String(err?.message || '');
 
     if (
-      err?.code === 'resource-exhausted' ||
-      String(err?.message || '').toLowerCase().includes('1 mib') ||
-      String(err?.message || '').toLowerCase().includes('maximum')
+      code === 'resource-exhausted' ||
+      message.toLowerCase().includes('1 mib') ||
+      message.toLowerCase().includes('maximum')
     ) {
       showMessage('الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.');
+    } else if (code === 'permission-denied') {
+      showMessage('لا توجد صلاحية لحفظ المنشور في هذا القسم.');
+    } else if (code === 'failed-precondition') {
+      showMessage('يوجد إعداد ناقص في Firestore.');
     } else {
-      showMessage('تعذر حفظ المنشور.');
+      showMessage('خطأ الحفظ: ' + (message || code || 'خطأ غير معروف'));
     }
+
+    alert(
+      'خطأ الحفظ الحقيقي:\n\n' +
+      (message || code || 'خطأ غير معروف')
+    );
   }
+});
+ 
 });
 
 
