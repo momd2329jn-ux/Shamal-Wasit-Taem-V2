@@ -1776,3 +1776,79 @@ select{
   margin:0 auto 12px;
   border-radius:12px;
 }
+/* ==========================================
+   إدارة أقسام الموقع
+   ========================================== */
+
+.category-admin-form {
+  margin-bottom: 20px;
+}
+
+.site-category-admin-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255,255,255,.02);
+}
+
+.site-category-admin-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+  font-size: 28px;
+}
+
+.site-category-admin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.site-category-admin-info h4 {
+  margin: 0 0 5px;
+}
+
+.site-category-admin-info p {
+  margin: 0 0 6px;
+  color: var(--muted);
+}
+
+.site-category-admin-info small {
+  color: var(--muted);
+}
+
+.site-category-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.category-active-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .site-category-admin-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .site-category-admin-info {
+    width: calc(100% - 68px);
+  }
+
+  .site-category-admin-actions {
+    width: 100%;
+  }
+}
