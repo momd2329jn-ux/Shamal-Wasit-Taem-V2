@@ -3,33 +3,43 @@
 // ======================================================
 
 (function () {
+
   function applyNav(user) {
     var authLink = document.querySelector('[data-nav="auth"]');
     var member = document.querySelector('[data-nav="member"]');
     var admin = document.querySelector('[data-nav="admin"]');
 
-    if (!authLink || !member || !admin) return;
+    if (!authLink || !member || !admin) {
+      console.log('NAV: عناصر الهيدر مو موجودة');
+      return;
+    }
 
+    // زائر: تسجيل الدخول ظاهر، الباقي مخفي
     if (!user || user.isAnonymous === true) {
       authLink.removeAttribute('hidden');
       member.setAttribute('hidden', '');
       admin.setAttribute('hidden', '');
+      console.log('NAV: زائر');
       return;
     }
 
-    // المستخدم مسجل - نخفي تسجيل الدخول ونظهر حسابي
+    // مسجّل: تسجيل الدخول مخفي، حسابي ظاهر
     authLink.setAttribute('hidden', '');
     member.removeAttribute('hidden');
+    console.log('NAV: مسجل - UID:', user.uid);
 
-    // نقرأ الدور من Firestore
+    // نقرأ الدور
     db.collection('users').doc(user.uid).get()
       .then(function (snap) {
         var role = snap.exists
           ? String(snap.data().role || 'user').trim().toLowerCase()
           : 'user';
 
+        console.log('NAV: الدور =', role);
+
         if (role === 'admin' || role === 'supervisor') {
           admin.removeAttribute('hidden');
+          console.log('NAV: لوحة التحكم ظاهرة');
         } else {
           admin.setAttribute('hidden', '');
         }
@@ -43,13 +53,13 @@
   // انتظار Firebase
   function waitFirebase() {
     if (window.auth && window.db) {
+      console.log('NAV: Firebase جاهز');
       auth.onAuthStateChanged(applyNav);
     } else {
       setTimeout(waitFirebase, 100);
     }
   }
 
-  // قائمة الجوال
   function initMenu() {
     var b = document.getElementById('menuButton');
     var n = document.getElementById('mainNav');
@@ -63,6 +73,7 @@
   }
 
   function start() {
+    console.log('NAV: app.js بدأ');
     initMenu();
     waitFirebase();
   }
@@ -73,8 +84,8 @@
     start();
   }
 
-  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 })();
+
