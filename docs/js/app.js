@@ -15,85 +15,136 @@
     }
   }
 
+  // ====================================================
+  // تحديث الهيدر حسب حالة تسجيل الدخول والصلاحية
+  // ====================================================
+
   function applyNav(user) {
-    const authLink = document.querySelector('[data-nav="auth"]');
-    const memberLink = document.querySelector('[data-nav="member"]');
-    const adminLink = document.querySelector('[data-nav="admin"]');
+
+    const authLink =
+      document.querySelector('[data-nav="auth"]');
+
+    const memberLink =
+      document.querySelector('[data-nav="member"]');
+
+    const adminLink =
+      document.querySelector('[data-nav="admin"]');
 
     if (!authLink || !memberLink || !adminLink) {
       return;
     }
 
-    // ==============================
+    // ------------------------------------------
     // زائر
-    // ==============================
+    // ------------------------------------------
+
     if (!user || user.isAnonymous === true) {
+
       setHidden(authLink, false);
       setHidden(memberLink, true);
       setHidden(adminLink, true);
+
       return;
     }
 
-    // ==============================
-    // عضو مسجل
-    // ==============================
+    // ------------------------------------------
+    // مستخدم مسجل
+    // ------------------------------------------
+
     setHidden(authLink, true);
     setHidden(memberLink, false);
     setHidden(adminLink, true);
 
-    if (!window.db) {
+    // ------------------------------------------
+    // Firebase عندنا معرف كـ const auth / db
+    // لذلك نستخدمهما مباشرة
+    // ------------------------------------------
+
+    if (typeof db === 'undefined') {
       return;
     }
 
-    // ==============================
-    // التحقق من صلاحية المستخدم
-    // ==============================
     db.collection('users')
       .doc(user.uid)
       .get()
+
       .then(function (snap) {
 
         const role = snap.exists
-          ? String(snap.data().role || 'user')
-              .trim()
-              .toLowerCase()
+          ? String(
+              snap.data().role || 'user'
+            ).trim().toLowerCase()
           : 'user';
 
-        if (role === 'admin' || role === 'supervisor') {
+        // المدير أو المشرف
+        if (
+          role === 'admin' ||
+          role === 'supervisor'
+        ) {
+
           setHidden(adminLink, false);
+
         } else {
+
           setHidden(adminLink, true);
+
         }
 
       })
+
       .catch(function (error) {
 
-        console.error('NAV ROLE ERROR:', error);
+        console.error(
+          'NAV ROLE ERROR:',
+          error
+        );
+
         setHidden(adminLink, true);
 
       });
   }
 
-  // ==============================
+
+  // ====================================================
   // انتظار Firebase
-  // ==============================
+  // ====================================================
+
   function waitForFirebase() {
 
-    if (window.auth && window.db) {
-      auth.onAuthStateChanged(applyNav);
+    // هنا الإصلاح المهم:
+    // لا نستخدم window.auth
+    // لأن firebase-config.js عندك يستخدم const auth
+
+    if (
+      typeof auth !== 'undefined' &&
+      typeof db !== 'undefined'
+    ) {
+
+      auth.onAuthStateChanged(
+        applyNav
+      );
+
       return;
     }
 
-    setTimeout(waitForFirebase, 100);
+    setTimeout(
+      waitForFirebase,
+      100
+    );
   }
 
-  // ==============================
+
+  // ====================================================
   // قائمة الهاتف
-  // ==============================
+  // ====================================================
+
   function initMenu() {
 
-    const button = document.getElementById('menuButton');
-    const nav = document.getElementById('mainNav');
+    const button =
+      document.getElementById('menuButton');
+
+    const nav =
+      document.getElementById('mainNav');
 
     if (!nav) {
       return;
@@ -101,46 +152,56 @@
 
     if (button) {
 
-      button.addEventListener('click', function () {
+      button.addEventListener(
+        'click',
+        function () {
 
-        nav.classList.toggle('open');
+          nav.classList.toggle('open');
 
-        const opened =
-          nav.classList.contains('open');
+          const opened =
+            nav.classList.contains('open');
 
-        button.setAttribute(
-          'aria-expanded',
-          String(opened)
-        );
+          button.setAttribute(
+            'aria-expanded',
+            String(opened)
+          );
 
-      });
+        }
+      );
 
     }
 
-    nav.addEventListener('click', function (event) {
+    nav.addEventListener(
+      'click',
+      function (event) {
 
-      const link =
-        event.target.closest('a');
+        const link =
+          event.target.closest('a');
 
-      if (!link) {
-        return;
+        if (!link) {
+          return;
+        }
+
+        nav.classList.remove('open');
+
+        if (button) {
+
+          button.setAttribute(
+            'aria-expanded',
+            'false'
+          );
+
+        }
+
       }
-
-      nav.classList.remove('open');
-
-      if (button) {
-        button.setAttribute(
-          'aria-expanded',
-          'false'
-        );
-      }
-
-    });
+    );
   }
 
-  // ==============================
+
+  // ====================================================
   // تشغيل
-  // ==============================
+  // ====================================================
+
   function start() {
 
     initMenu();
@@ -148,7 +209,10 @@
 
   }
 
-  if (document.readyState === 'loading') {
+
+  if (
+    document.readyState === 'loading'
+  ) {
 
     document.addEventListener(
       'DOMContentLoaded',
@@ -161,20 +225,32 @@
 
   }
 
-  // ==============================
+
+  // ====================================================
   // Service Worker
-  // ==============================
-  if ('serviceWorker' in navigator) {
+  // ====================================================
 
-    window.addEventListener('load', function () {
+  if (
+    'serviceWorker' in navigator
+  ) {
 
-      navigator.serviceWorker
-        .register('sw.js')
-        .catch(function (error) {
-          console.warn('SW:', error);
-        });
+    window.addEventListener(
+      'load',
+      function () {
 
-    });
+        navigator.serviceWorker
+          .register('sw.js')
+          .catch(function (error) {
+
+            console.warn(
+              'SW:',
+              error
+            );
+
+          });
+
+      }
+    );
 
   }
 
