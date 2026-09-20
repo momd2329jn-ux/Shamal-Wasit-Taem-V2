@@ -1097,7 +1097,6 @@ if (
   key === 'events' &&  
   $('eventDate').value  
 ) {  
-
   data.eventDate =  
     $('eventDate').value;  
 
