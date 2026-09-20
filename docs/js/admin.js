@@ -1123,33 +1123,372 @@ $('postForm').addEventListener(
 
     try {
 
-      // صورة جديدة
-      if (selectedImageData) {
+      console.error(
+        'SAVE POST ERROR:',
+        err
+      );
 
-        data.imageData =
-          selectedImageData;
+      const code =
+        err?.code || '';
 
-        data.imageUrl =
-          firebase.firestore.FieldValue
-            .delete();
+      const message =
+        String(
+          err?.message || ''
+        );
 
-      }
-
-      // إزالة الصورة
-      else if (
-        id &&
-        removeExistingImage
+      if (
+        code === 'resource-exhausted' ||
+        message
+          .toLowerCase()
+          .includes('1 mib') ||
+        message
+          .toLowerCase()
+          .includes('maximum')
       ) {
 
-        data.imageData =
-          firebase.firestore.FieldValue
-            .delete();
+        showMessage(
+          'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'
+        );
 
-        data.imageUrl =
-          firebase.firestore.FieldValue
-            .delete();
+      } else if (
+        code === 'permission-denied'
+      ) {
+
+        showMessage(
+          'لا توجد صلاحية لحفظ المنشور في هذا القسم.'
+        );
+
+      } else if (
+        code === 'failed-precondition'
+      ) {
+
+        showMessage(
+          'يوجد إعداد ناقص في Firestore.'
+        );
+
+      } else {
+
+        showMessage(
+          'خطأ الحفظ: ' +
+          (
+            message ||
+            code ||
+            'خطأ غير معروف'
+          )
+        );
 
       }
+
+      alert(
+        'خطأ الحفظ الحقيقي:\n\n' +
+        (
+          message ||
+          code ||
+          'خطأ غير معروف'
+        )
+      );
+
+    }
+
+  }
+);
+
+
+// ======================================================
+// تسجيل الخروج - يرجع للرئيسية
+// ======================================================
+
+$('logoutBtn').addEventListener(
+  'click',
+  async () => {
+
+    await auth.signOut();
+
+    location.href =
+      'index.html';
+
+  }
+);
+
+
+// ======================================================
+// إشعارات الإدارة
+// ======================================================
+
+function updateAdminNotificationBadge(count){
+
+  const b =
+    document.getElementById(
+      'adminNotificationBadge'
+    );
+
+  if (!b) return;
+
+  b.textContent =
+    count > 0
+      ? '🔔 ' + count + ' استفسار جديد'
+      : '🔔 لا توجد استفسارات جديدة';
+
+  b.classList.toggle(
+    'has-alert',
+    count > 0
+  );
+
+}
+
+
+// ======================================================
+// التحقق من الحساب والصلاحيات
+// ======================================================
+
+auth.onAuthStateChanged(
+  async user => {
+
+    console.log(
+      'ADMIN AUTH CHECK:',
+      user
+        ? user.uid
+        : 'NO USER'
+    );
+
+    if (!user) {
+
+      location.href =
+        'login.html?next=admin.html';
+
+      return;
+    }
+
+    currentUser =
+      user;
+
+    try {
+
+      console.log(
+        'ADMIN: جاري قراءة بيانات المستخدم...'
+      );
+
+      const doc =
+        await db
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      console.log(
+        'ADMIN USER DOC:',
+        doc.exists
+          ? doc.data()
+          : 'DOCUMENT NOT FOUND'
+      );
+
+      if (!doc.exists) {
+
+        $('adminGate').innerHTML =
+          'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+        return;
+      }
+
+      const userData =
+        doc.data();
+
+      const role =
+        String(
+          userData.role || 'user'
+        )
+          .trim()
+          .toLowerCase();
+
+      console.log(
+        'ADMIN ROLE:',
+        role
+      );
+
+      if (
+        !['admin', 'supervisor']
+          .includes(role)
+      ) {
+
+        $('adminGate').innerHTML =
+          'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+        return;
+      }
+
+      currentUserRole =
+        role;
+
+      currentPermissions =
+        Array.isArray(
+          userData.permissions
+        )
+          ? userData.permissions
+          : [];
+
+      $('adminGate').hidden =
+        true;
+
+      $('adminApp').hidden =
+        false;
+
+      $('adminEmail').textContent =
+        'المشرف: ' +
+        (user.email || '') +
+        ' — ' +
+        (
+          currentUserRole === 'admin'
+            ? 'مدير كامل'
+            : 'مشرف متخصص'
+        );
+
+
+      // المشرف المتخصص
+      if (
+        currentUserRole !== 'admin'
+      ) {
+
+        $('filterCategory')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              o.value !== 'all' &&
+              !canManage(o.value)
+            ) {
+
+              o.hidden =
+                true;
+
+            }
+
+          });
+
+        $('category')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              !canManage(o.value)
+            ) {
+
+              o.remove();
+
+            }
+
+          });
+
+        $('supervisorsCard').hidden =
+          true;
+
+        const inquiriesCard =
+          $('inquiriesList')
+            .closest(
+              '.admin-wide-card'
+            );
+
+        if (inquiriesCard) {
+
+          inquiriesCard.hidden =
+            !canManage(
+              'inquiries'
+            );
+
+        }
+
+        const canManagePosts =
+          Object.keys(
+            ADMIN_CATEGORIES
+          ).some(
+            canManage
+          );
+
+        $('postForm').hidden =
+          !canManagePosts;
+
+        const postsCard =
+          $('postsList')
+            .closest(
+              '.admin-card'
+            );
+
+        if (postsCard) {
+
+          postsCard.hidden =
+            !canManagePosts;
+
+        }
+
+      }
+
+
+      console.log(
+        'ADMIN: جاري تحميل المنشورات...'
+      );
+
+      await loadPosts();
+
+      console.log(
+        'ADMIN: تم تحميل المنشورات.'
+      );
+
+
+      if (
+        canManage('inquiries')
+      ) {
+
+        await loadInquiries();
+
+        if (
+          window.WasitNotifications
+        ) {
+
+          stopAdminNotifications =
+            WasitNotifications
+              .listenAdminInquiries(
+                user,
+                updateAdminNotificationBadge
+              );
+
+        }
+
+      }
+
+
+      if (
+        typeof loadSupervisors ===
+        'function' &&
+        currentUserRole === 'admin'
+      ) {
+
+        await loadSupervisors();
+
+      }
+
+
+      if (
+        typeof refreshDashboard ===
+        'function'
+      ) {
+
+        await refreshDashboard();
+
+      }
+
+      console.log(
+        'ADMIN: تم فتح لوحة التحكم بنجاح.'
+      );
+
+    } catch (e) {
+
+      console.error(
+        'ADMIN ACCESS ERROR:',
+        e
+      );
+
+      $('adminGate').innerHTML =
+        'حدث خطأ أثناء التحقق من صلاح
 
       // منشور جديد أو تعديل
       if (id) {
