@@ -1,194 +1,417 @@
 // ======================================================
-// site-icons-admin.js - إدارة أيقونات الفريق من لوحة التحكم
+// إدارة أقسام الموقع
 // فريق شمال واسط
 // ======================================================
 
-(function(){
+(function () {
+
+  const DEFAULT_CATEGORIES = [
+    {
+      title: 'الأخبار',
+      icon: '📰',
+      description: 'آخر أخبار ونشاطات الفريق.',
+      link: 'news.html',
+      order: 1,
+      active: true
+    },
+    {
+      title: 'الفعاليات',
+      icon: '📅',
+      description: 'الفعاليات والمبادرات القادمة والسابقة.',
+      link: 'events.html',
+      order: 2,
+      active: true
+    },
+    {
+      title: 'المقالات',
+      icon: '📚',
+      description: 'مقالات ومواضيع معرفية ومجتمعية.',
+      link: 'articles.html',
+      order: 3,
+      active: true
+    },
+    {
+      title: 'الصحة',
+      icon: '🩺',
+      description: 'محتوى صحي وتوعوي موثوق.',
+      link: 'health.html',
+      order: 4,
+      active: true
+    },
+    {
+      title: 'البيئة',
+      icon: '🌱',
+      description: 'مبادرات وأفكار لحماية بيئتنا.',
+      link: 'environment.html',
+      order: 5,
+      active: true
+    },
+    {
+      title: 'استفسارات المواطنين',
+      icon: '💬',
+      description: 'أرسل استفسارك وتابع الرد من الفريق.',
+      link: 'inquiry.html',
+      order: 6,
+      active: true
+    },
+    {
+      title: 'تواصل معنا',
+      icon: '📱',
+      description: 'تابعنا وتواصل معنا عبر منصات التواصل الاجتماعي.',
+      link: 'contact.html',
+      order: 7,
+      active: true
+    }
+  ];
+
   const $ = id => document.getElementById(id);
 
-  const escIcons = v => String(v || '').replace(/[&<>'"]/g, c => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;'
-  }[c]));
-
-  function showIconMessage(text, ok = false){
-    const el = $('iconFormMessage');
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'form-message ' + (ok ? 'success' : 'error');
+  function esc(value) {
+    return String(value || '').replace(/[&<>'"]/g, function (char) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[char];
+    });
   }
 
-  function resetIconForm(){
-    const form = $('iconForm');
-    if (!form) return;
-    form.reset();
-    $('iconEditingId').value = '';
-    $('iconOrder').value = 100;
-    $('iconActive').checked = true;
-    $('saveIconBtn').textContent = 'إضافة الأيقونة';
-    $('cancelIconEdit').hidden = true;
-    showIconMessage('');
+  function isAdmin() {
+    return typeof currentUserRole !== 'undefined'
+      && currentUserRole === 'admin';
   }
 
-  async function loadIcons(){
-    const box = $('iconsList');
-    if (!box) return;
+  async function seedDefaultCategories() {
+    const snap = await db.collection('siteCategories').limit(1).get();
 
-    box.innerHTML = '<div class="empty-state">جاري التحميل...</div>';
+    if (!snap.empty) return;
+
+    const batch = db.batch();
+
+    DEFAULT_CATEGORIES.forEach(function (category) {
+      const ref = db.collection('siteCategories').doc();
+
+      batch.set(ref, {
+        title: category.title,
+        icon: category.icon,
+        description: category.description,
+        link: category.link,
+        order: category.order,
+        active: category.active,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+  }
+
+  function resetForm() {
+    $('siteCategoryId').value = '';
+    $('siteCategoryTitle').value = '';
+    $('siteCategoryIcon').value = '';
+    $('siteCategoryDescription').value = '';
+    $('siteCategoryLink').value = '';
+    $('siteCategoryOrder').value = '1';
+    $('siteCategoryActive').checked = true;
+
+    $('saveSiteCategory').textContent = 'حفظ القسم';
+
+    if ($('cancelSiteCategory')) {
+      $('cancelSiteCategory').hidden = true;
+    }
+  }
+
+  function editCategory(doc) {
+    const data = doc.data();
+
+    $('siteCategoryId').value = doc.id;
+    $('siteCategoryTitle').value = data.title || '';
+    $('siteCategoryIcon').value = data.icon || '';
+    $('siteCategoryDescription').value = data.description || '';
+    $('siteCategoryLink').value = data.link || '';
+    $('siteCategoryOrder').value = Number(data.order || 1);
+    $('siteCategoryActive').checked = data.active !== false;
+
+    $('saveSiteCategory').textContent = 'حفظ التعديل';
+
+    if ($('cancelSiteCategory')) {
+      $('cancelSiteCategory').hidden = false;
+    }
+
+    $('siteCategoriesCard').scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm('هل تريد حذف هذا القسم من الموقع؟')) return;
 
     try {
-      const snap = await db.collection('siteIcons').orderBy('order', 'asc').get();
+      await db.collection('siteCategories').doc(id).delete();
+      await loadCategories();
+
+      $('siteCategoryMessage').textContent = 'تم حذف القسم بنجاح.';
+    } catch (error) {
+      console.error(error);
+      $('siteCategoryMessage').textContent =
+        'تعذر حذف القسم. تأكد من صلاحيات المدير.';
+    }
+  }
+
+  async function toggleCategory(id, active) {
+    try {
+      await db.collection('siteCategories').doc(id).update({
+        active: active,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await loadCategories();
+    } catch (error) {
+      console.error(error);
+      alert('تعذر تغيير حالة القسم.');
+    }
+  }
+
+  async function loadCategories() {
+    const box = $('siteCategoriesList');
+    if (!box) return;
+
+    box.innerHTML =
+      '<div class="empty-state">جاري تحميل الأقسام...</div>';
+
+    try {
+      const snap = await db
+        .collection('siteCategories')
+        .orderBy('order', 'asc')
+        .get();
 
       if (snap.empty) {
-        box.innerHTML = '<div class="empty-state">لا توجد أيقونات مخصصة بعد. الأيقونات الافتراضية تظهر في الفوتر.</div>';
+        box.innerHTML =
+          '<div class="empty-state">لا توجد أقسام.</div>';
         return;
       }
 
-      box.innerHTML = snap.docs.map(doc => {
-        const d = doc.data();
+      box.innerHTML = snap.docs.map(function (doc) {
+        const data = doc.data();
+
         return `
-          <div class="icon-manager-item" data-id="${doc.id}">
-            <div class="icon-manager-preview">
-              <span class="social-icon">${escIcons(d.symbol || '●')}</span>
-              <strong>${escIcons(d.label || 'بدون اسم')}</strong>
-              <small>الترتيب: ${d.order ?? 100} • ${d.active ? 'ظاهرة' : 'مخفية'}</small>
+          <article class="site-category-admin-item" data-id="${esc(doc.id)}">
+
+            <div class="site-category-admin-icon">
+              ${esc(data.icon || '●')}
             </div>
-            <div class="icon-manager-actions">
-              <button type="button" class="btn mini edit-icon" data-id="${doc.id}">تعديل</button>
-              <button type="button" class="btn mini danger delete-icon" data-id="${doc.id}">حذف</button>
+
+            <div class="site-category-admin-info">
+              <h4>${esc(data.title || 'بدون اسم')}</h4>
+              <p>${esc(data.description || '')}</p>
+
+              <small>
+                الرابط: ${esc(data.link || '—')}
+                • الترتيب: ${Number(data.order || 0)}
+              </small>
             </div>
-          </div>
+
+            <div class="site-category-admin-actions">
+
+              <label class="category-active-toggle">
+                <input
+                  type="checkbox"
+                  class="category-active"
+                  ${data.active !== false ? 'checked' : ''}
+                >
+                ظاهر
+              </label>
+
+              <button
+                type="button"
+                class="btn mini edit-category"
+              >
+                تعديل
+              </button>
+
+              <button
+                type="button"
+                class="btn mini danger delete-category"
+              >
+                حذف
+              </button>
+
+            </div>
+
+          </article>
         `;
       }).join('');
 
-    } catch (e) {
-      console.error(e);
-      box.innerHTML = '<div class="empty-state">تعذر تحميل الأيقونات.</div>';
+      snap.docs.forEach(function (doc) {
+        const item = box.querySelector(
+          '[data-id="' + CSS.escape(doc.id) + '"]'
+        );
+
+        if (!item) return;
+
+        const editBtn = item.querySelector('.edit-category');
+        const deleteBtn = item.querySelector('.delete-category');
+        const activeInput = item.querySelector('.category-active');
+
+        if (editBtn) {
+          editBtn.addEventListener('click', function () {
+            editCategory(doc);
+          });
+        }
+
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function () {
+            deleteCategory(doc.id);
+          });
+        }
+
+        if (activeInput) {
+          activeInput.addEventListener('change', function () {
+            toggleCategory(doc.id, activeInput.checked);
+          });
+        }
+      });
+
+    } catch (error) {
+      console.error(error);
+
+      box.innerHTML =
+        '<div class="empty-state">تعذر تحميل الأقسام.</div>';
     }
   }
 
-  async function saveIcon(e){
-    e.preventDefault();
+  async function saveCategory(event) {
+    event.preventDefault();
 
-    const label = $('iconLabel').value.trim();
-    const symbol = $('iconSymbol').value.trim();
-    const order = parseInt($('iconOrder').value, 10) || 100;
-    const active = $('iconActive').checked;
-    const editingId = $('iconEditingId').value.trim();
-
-    if (!label || !symbol) {
-      showIconMessage('يرجى ملء جميع الحقول.');
+    if (!isAdmin()) {
+      alert('هذه العملية متاحة للمدير الكامل فقط.');
       return;
     }
 
-    const btn = $('saveIconBtn');
+    const id = $('siteCategoryId').value.trim();
+
+    const data = {
+      title: $('siteCategoryTitle').value.trim(),
+      icon: $('siteCategoryIcon').value.trim(),
+      description: $('siteCategoryDescription').value.trim(),
+      link: $('siteCategoryLink').value.trim(),
+      order: Number($('siteCategoryOrder').value || 1),
+      active: $('siteCategoryActive').checked,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.title || !data.icon || !data.description || !data.link) {
+      $('siteCategoryMessage').textContent =
+        'يرجى إكمال جميع الحقول.';
+      return;
+    }
+
+    const btn = $('saveSiteCategory');
     btn.disabled = true;
 
     try {
-      const data = {
-        label,
-        symbol,
-        order,
-        active,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
+      if (id) {
 
-      if (editingId) {
-        await db.collection('siteIcons').doc(editingId).update(data);
-        showIconMessage('تم تعديل الأيقونة بنجاح.', true);
+        await db
+          .collection('siteCategories')
+          .doc(id)
+          .update(data);
+
+        $('siteCategoryMessage').textContent =
+          'تم تعديل القسم بنجاح.';
+
       } else {
-        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection('siteIcons').add(data);
-        showIconMessage('تمت إضافة الأيقونة بنجاح.', true);
+
+        data.createdAt =
+          firebase.firestore.FieldValue.serverTimestamp();
+
+        await db
+          .collection('siteCategories')
+          .add(data);
+
+        $('siteCategoryMessage').textContent =
+          'تمت إضافة القسم بنجاح.';
       }
 
-      resetIconForm();
-      await loadIcons();
+      resetForm();
+      await loadCategories();
 
-    } catch (err) {
-      console.error(err);
-      showIconMessage('تعذر حفظ الأيقونة.');
+    } catch (error) {
+      console.error(error);
+
+      $('siteCategoryMessage').textContent =
+        'تعذر حفظ القسم. تأكد من صلاحيات المدير.';
     } finally {
       btn.disabled = false;
     }
   }
 
-  async function editIcon(id){
-    try {
-      const doc = await db.collection('siteIcons').doc(id).get();
-      if (!doc.exists) return;
+  async function start() {
 
-      const d = doc.data();
-
-      $('iconEditingId').value = id;
-      $('iconLabel').value = d.label || '';
-      $('iconSymbol').value = d.symbol || '';
-      $('iconOrder').value = d.order ?? 100;
-      $('iconActive').checked = d.active !== false;
-      $('saveIconBtn').textContent = 'حفظ التعديلات';
-      $('cancelIconEdit').hidden = false;
-
-      window.scrollTo({
-        top: $('iconsCard').offsetTop - 90,
-        behavior: 'smooth'
-      });
-
-    } catch (e) {
-      console.error(e);
-      alert('تعذر فتح الأيقونة للتعديل.');
+    if (
+      typeof auth === 'undefined' ||
+      typeof db === 'undefined'
+    ) {
+      setTimeout(start, 100);
+      return;
     }
-  }
 
-  async function deleteIcon(id){
-    if (!confirm('حذف هذه الأيقونة نهائياً؟')) return;
+    auth.onAuthStateChanged(async function (user) {
 
-    try {
-      await db.collection('siteIcons').doc(id).delete();
-      await loadIcons();
-    } catch (e) {
-      console.error(e);
-      alert('تعذر حذف الأيقونة.');
-    }
-  }
-
-  function init(){
-    const form = $('iconForm');
-    if (!form) return;
-
-    form.addEventListener('submit', saveIcon);
-
-    $('cancelIconEdit').addEventListener('click', resetIconForm);
-    $('refreshIcons').addEventListener('click', loadIcons);
-
-    $('iconsList').addEventListener('click', e => {
-      const edit = e.target.closest('.edit-icon');
-      const del = e.target.closest('.delete-icon');
-      if (edit) editIcon(edit.dataset.id);
-      if (del) deleteIcon(del.dataset.id);
-    });
-
-    // ننتظر حتى يكون المستخدم مدير
-    auth.onAuthStateChanged(async user => {
       if (!user || user.isAnonymous === true) return;
 
       try {
-        const snap = await db.collection('users').doc(user.uid).get();
-        if (!snap.exists) return;
 
-        const role = String(snap.data().role || 'user').toLowerCase();
+        const userSnap = await db
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-        if (role === 'admin') {
-          $('iconsCard').hidden = false;
-          await loadIcons();
+        if (
+          !userSnap.exists ||
+          userSnap.data().role !== 'admin'
+        ) {
+          return;
         }
-      } catch (e) {
-        console.error(e);
+
+        await seedDefaultCategories();
+        await loadCategories();
+
+      } catch (error) {
+        console.error(
+          'SITE CATEGORIES ADMIN ERROR:',
+          error
+        );
       }
     });
+
+    const form = $('siteCategoryForm');
+
+    if (form) {
+      form.addEventListener('submit', saveCategory);
+    }
+
+    const newBtn = $('resetCategoryForm');
+
+    if (newBtn) {
+      newBtn.addEventListener('click', resetForm);
+    }
+
+    const cancelBtn = $('cancelSiteCategory');
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', resetForm);
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+
 })();
