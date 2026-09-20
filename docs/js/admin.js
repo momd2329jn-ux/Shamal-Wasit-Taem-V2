@@ -271,50 +271,105 @@ async function compressImage(file) {
   }
 
 }
+
+
+// ======================================================
 // اختيار صورة من الجهاز
+// ======================================================
+
 const imageFileInput = $('imageFile');
 
 if (imageFileInput) {
+
   imageFileInput.addEventListener('change', async () => {
+
     const file = imageFileInput.files?.[0];
+
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
+
       alert('الرجاء اختيار صورة فقط.');
+
       imageFileInput.value = '';
+
       return;
     }
 
     try {
+
       showMessage('جاري تجهيز الصورة...');
-      selectedImageData = await compressImage(file);
+
+      selectedImageData =
+        await compressImage(file);
+
       removeExistingImage = false;
+
       showImagePreview(selectedImageData);
-      showMessage('تم تجهيز الصورة، اضغط حفظ المنشور.', true);
+
+      showMessage(
+        'تم تجهيز الصورة، اضغط حفظ المنشور.',
+        true
+      );
+
     } catch (e) {
+
       console.error(e);
+
       selectedImageData = null;
+
       imageFileInput.value = '';
-      alert('تعذر تجهيز الصورة. جرّب صورة أصغر.');
+
+      alert(
+        'تعذر تجهيز الصورة. جرّب صورة أصغر.'
+      );
+
     }
+
   });
+
 }
 
+
+// ======================================================
 // إزالة الصورة
+// ======================================================
+
 const removeImageButton = $('removeImage');
 
 if (removeImageButton) {
+
   removeImageButton.addEventListener('click', () => {
+
     selectedImageData = null;
+
     removeExistingImage = true;
+
     const input = $('imageFile');
-    if (input) input.value = '';
+
+    if (input) {
+      input.value = '';
+    }
+
     const preview = $('imagePreview');
-    if (preview) preview.hidden = true;
+
+    if (preview) {
+      preview.hidden = true;
+    }
+
     const previewImg = $('imagePreviewImg');
-    if (previewImg) previewImg.removeAttribute('src');
-    showMessage('تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.', true);
+
+    if (previewImg) {
+      previewImg.removeAttribute('src');
+    }
+
+    showMessage(
+      'تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.',
+      true
+    );
+
   });
+
 }
 
 
@@ -323,25 +378,46 @@ if (removeImageButton) {
 // ======================================================
 
 function showMessage(text, ok = false){
+
   const el = $('formMessage');
+
   if (!el) return;
+
   el.textContent = text;
-  el.className = 'form-message ' + (ok ? 'success' : 'error');
+
+  el.className =
+    'form-message ' +
+    (ok ? 'success' : 'error');
 }
 
 function resetForm(){
+
   $('postForm').reset();
+
   $('editingId').value = '';
-  $('formTitle').textContent = 'إضافة منشور جديد';
-  $('saveBtn').textContent = 'حفظ المنشور';
+
+  $('formTitle').textContent =
+    'إضافة منشور جديد';
+
+  $('saveBtn').textContent =
+    'حفظ المنشور';
+
   $('cancelEdit').hidden = true;
-  $('eventDateWrap').hidden = $('category').value !== 'events';
+
+  $('eventDateWrap').hidden =
+    $('category').value !== 'events';
+
   clearImageState();
+
   showMessage('');
 }
 
 function dateText(d){
-  return d?.toDate ? d.toDate().toLocaleString('ar-IQ') : d || '';
+
+  return d?.toDate
+    ? d.toDate().toLocaleString('ar-IQ')
+    : d || '';
+
 }
 
 
@@ -350,60 +426,146 @@ function dateText(d){
 // ======================================================
 
 function postItem(doc){
+
   const d = doc.data();
-  const key = d.category || 'news';
-  const cfg = ADMIN_CATEGORIES[key] || ADMIN_CATEGORIES.news;
-  const image = d.imageData || d.imageUrl || '';
+
+  const key =
+    d.category || 'news';
+
+  const cfg =
+    ADMIN_CATEGORIES[key] ||
+    ADMIN_CATEGORIES.news;
+
+  const image =
+    d.imageData ||
+    d.imageUrl ||
+    '';
 
   return `
     <div class="admin-post">
+
       <div>
+
         ${image ? `
-          <img src="${esc(image)}" alt="" loading="lazy"
-            style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;">
+          <img
+            src="${esc(image)}"
+            alt=""
+            loading="lazy"
+            style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;"
+          >
         ` : ''}
+
         <div class="post-meta">
+
           ${cfg.icon} ${cfg.title}
-          ${d.createdAt ? '• ' + esc(dateText(d.createdAt)) : ''}
+
+          ${d.createdAt
+            ? '• ' + esc(dateText(d.createdAt))
+            : ''}
+
         </div>
-        <h4>${esc(d.title || 'بدون عنوان')}</h4>
-        <p>${esc(d.content || '')}</p>
+
+        <h4>
+          ${esc(d.title || 'بدون عنوان')}
+        </h4>
+
+        <p>
+          ${esc(d.content || '')}
+        </p>
+
       </div>
+
       <div class="admin-post-actions">
-        <button type="button" class="btn mini edit-post" data-id="${doc.id}" data-category="${key}">تعديل</button>
-        <button type="button" class="btn mini danger delete-post" data-id="${doc.id}" data-category="${key}">حذف</button>
+
+        <button
+          type="button"
+          class="btn mini edit-post"
+          data-id="${doc.id}"
+          data-category="${key}"
+        >
+          تعديل
+        </button>
+
+        <button
+          type="button"
+          class="btn mini danger delete-post"
+          data-id="${doc.id}"
+          data-category="${key}"
+        >
+          حذف
+        </button>
+
       </div>
+
     </div>
   `;
 }
 
 async function loadPosts(){
+
   const box = $('postsList');
-  const filter = $('filterCategory').value;
-  box.innerHTML = '<div class="empty-state">جاري التحميل...</div>';
+
+  const filter =
+    $('filterCategory').value;
+
+  box.innerHTML =
+    '<div class="empty-state">جاري التحميل...</div>';
 
   try {
+
     let all = [];
-    const keys = (filter === 'all' ? Object.keys(ADMIN_CATEGORIES) : [filter]).filter(canManage);
+
+    const keys =
+      (
+        filter === 'all'
+          ? Object.keys(ADMIN_CATEGORIES)
+          : [filter]
+      ).filter(canManage);
 
     for (const key of keys) {
-      const snap = await db.collection(ADMIN_CATEGORIES[key].collection).orderBy('createdAt', 'desc').get();
-      snap.forEach(doc => { all.push({ doc, key }); });
+
+      const snap =
+        await db
+          .collection(
+            ADMIN_CATEGORIES[key].collection
+          )
+          .orderBy('createdAt', 'desc')
+          .get();
+
+      snap.forEach(doc => {
+
+        all.push({
+          doc,
+          key
+        });
+
+      });
+
     }
 
     all.sort((a, b) =>
-      (b.doc.data().createdAt?.toMillis?.() || 0) -
-      (a.doc.data().createdAt?.toMillis?.() || 0)
+      (
+        b.doc.data().createdAt?.toMillis?.() || 0
+      ) -
+      (
+        a.doc.data().createdAt?.toMillis?.() || 0
+      )
     );
 
-    box.innerHTML = all.length
-      ? all.map(x => postItem(x.doc)).join('')
-      : '<div class="empty-state">لا توجد منشورات حاليًا</div>';
+    box.innerHTML =
+      all.length
+        ? all.map(x => postItem(x.doc)).join('')
+        : '<div class="empty-state">لا توجد منشورات حاليًا</div>';
 
   } catch (e) {
+
     console.error(e);
-    box.innerHTML = '<div class="empty-state">تعذر تحميل المنشورات.</div>';
+
+    box.innerHTML =
+      '<div class="empty-state">تعذر تحميل المنشورات.</div>';
+
   }
+
 }
 
 
@@ -412,41 +574,95 @@ async function loadPosts(){
 // ======================================================
 
 async function loadForEdit(id, key){
+
   try {
-    const snap = await db.collection(ADMIN_CATEGORIES[key].collection).doc(id).get();
+
+    const snap =
+      await db
+        .collection(
+          ADMIN_CATEGORIES[key].collection
+        )
+        .doc(id)
+        .get();
+
     if (!snap.exists) return;
 
-    const d = snap.data();
-    $('editingId').value = id;
-    $('category').value = key;
-    $('title').value = d.title || '';
-    $('content').value = d.content || '';
-    $('eventDate').value = d.eventDate || '';
-    $('eventDateWrap').hidden = key !== 'events';
-    $('formTitle').textContent = 'تعديل المنشور';
-    $('saveBtn').textContent = 'حفظ التعديلات';
-    $('cancelEdit').hidden = false;
+    const d =
+      snap.data();
 
-    selectedImageData = null;
-    removeExistingImage = false;
+    $('editingId').value =
+      id;
 
-    const existingImage = d.imageData || d.imageUrl || '';
+    $('category').value =
+      key;
+
+    $('title').value =
+      d.title || '';
+
+    $('content').value =
+      d.content || '';
+
+    $('eventDate').value =
+      d.eventDate || '';
+
+    $('eventDateWrap').hidden =
+      key !== 'events';
+
+    $('formTitle').textContent =
+      'تعديل المنشور';
+
+    $('saveBtn').textContent =
+      'حفظ التعديلات';
+
+    $('cancelEdit').hidden =
+      false;
+
+    selectedImageData =
+      null;
+
+    removeExistingImage =
+      false;
+
+    const existingImage =
+      d.imageData ||
+      d.imageUrl ||
+      '';
+
     if (existingImage) {
-      showImagePreview(existingImage);
+
+      showImagePreview(
+        existingImage
+      );
+
     } else {
-      const preview = $('imagePreview');
-      if (preview) preview.hidden = true;
+
+      const preview =
+        $('imagePreview');
+
+      if (preview) {
+        preview.hidden = true;
+      }
+
     }
 
     window.scrollTo({
-      top: document.querySelector('.admin-section').offsetTop - 90,
+      top:
+        document.querySelector(
+          '.admin-section'
+        ).offsetTop - 90,
       behavior: 'smooth'
     });
 
   } catch (e) {
+
     console.error(e);
-    alert('تعذر فتح المنشور للتعديل.');
+
+    alert(
+      'تعذر فتح المنشور للتعديل.'
+    );
+
   }
+
 }
 
 
@@ -455,14 +671,36 @@ async function loadForEdit(id, key){
 // ======================================================
 
 async function deletePost(id, key){
-  if (!confirm('هل أنت متأكد من حذف هذا المنشور؟')) return;
-  try {
-    await db.collection(ADMIN_CATEGORIES[key].collection).doc(id).delete();
-    await loadPosts();
-  } catch (e) {
-    console.error(e);
-    alert('تعذر حذف المنشور.');
+
+  if (
+    !confirm(
+      'هل أنت متأكد من حذف هذا المنشور؟'
+    )
+  ) {
+    return;
   }
+
+  try {
+
+    await db
+      .collection(
+        ADMIN_CATEGORIES[key].collection
+      )
+      .doc(id)
+      .delete();
+
+    await loadPosts();
+
+  } catch (e) {
+
+    console.error(e);
+
+    alert(
+      'تعذر حذف المنشور.'
+    );
+
+  }
+
 }
 
 
@@ -471,75 +709,190 @@ async function deletePost(id, key){
 // ======================================================
 
 async function loadInquiries(){
-  const box = $('inquiriesList');
-  box.innerHTML = '<div class="empty-state">جاري تحميل الاستفسارات...</div>';
+
+  const box =
+    $('inquiriesList');
+
+  box.innerHTML =
+    '<div class="empty-state">جاري تحميل الاستفسارات...</div>';
 
   try {
-    const snap = await db.collection('inquiries').get();
-    const rows = snap.docs.sort((a, b) =>
-      (b.data().createdAt?.toMillis?.() || 0) -
-      (a.data().createdAt?.toMillis?.() || 0)
-    );
+
+    const snap =
+      await db
+        .collection('inquiries')
+        .get();
+
+    const rows =
+      snap.docs.sort((a, b) =>
+        (
+          b.data().createdAt?.toMillis?.() || 0
+        ) -
+        (
+          a.data().createdAt?.toMillis?.() || 0
+        )
+      );
 
     if (!rows.length) {
-      box.innerHTML = '<div class="empty-state">لا توجد استفسارات حاليًا.</div>';
+
+      box.innerHTML =
+        '<div class="empty-state">لا توجد استفسارات حاليًا.</div>';
+
       return;
     }
 
-    const unseen = rows.filter(doc =>
-      doc.data().adminSeen !== true && doc.data().status === 'new'
-    );
+    const unseen =
+      rows.filter(doc =>
+        doc.data().adminSeen !== true &&
+        doc.data().status === 'new'
+      );
 
     if (unseen.length) {
-      await Promise.all(unseen.map(doc =>
-        db.collection('inquiries').doc(doc.id).update({ adminSeen: true })
-      ));
+
+      await Promise.all(
+        unseen.map(doc =>
+          db
+            .collection('inquiries')
+            .doc(doc.id)
+            .update({
+              adminSeen: true
+            })
+        )
+      );
+
     }
 
     const users = {};
+
     for (const doc of rows) {
-      const uid = doc.data().userId;
+
+      const uid =
+        doc.data().userId;
+
       if (uid && !users[uid]) {
-        const u = await db.collection('users').doc(uid).get();
-        users[uid] = u.exists ? u.data() : {};
+
+        const u =
+          await db
+            .collection('users')
+            .doc(uid)
+            .get();
+
+        users[uid] =
+          u.exists
+            ? u.data()
+            : {};
+
       }
+
     }
 
-    box.innerHTML = rows.map(doc => {
-      const d = doc.data();
-      const u = users[d.userId] || {};
-      return `
-        <article class="admin-inquiry" data-inquiry-id="${doc.id}">
-          <div>
-            <div class="post-meta">
-              ${esc(d.type)}
-              ${d.createdAt ? '• ' + esc(dateText(d.createdAt)) : ''}
-            </div>
-            <h4>${esc(d.title)}</h4>
-            <p>${esc(d.message)}</p>
-            <small>المستخدم: ${esc(u.fullName || 'عضو')} — ${esc(u.email || '')}</small>
-            ${d.reply ? `
-              <div class="inquiry-reply">
-                <strong>الرد الحالي</strong>
-                <p>${esc(d.reply)}</p>
+    box.innerHTML =
+      rows.map(doc => {
+
+        const d =
+          doc.data();
+
+        const u =
+          users[d.userId] || {};
+
+        return `
+          <article
+            class="admin-inquiry"
+            data-inquiry-id="${doc.id}"
+          >
+
+            <div>
+
+              <div class="post-meta">
+
+                ${esc(d.type)}
+
+                ${
+                  d.createdAt
+                    ? '• ' +
+                      esc(dateText(d.createdAt))
+                    : ''
+                }
+
               </div>
-            ` : ''}
-          </div>
-          <div class="inquiry-actions">
-            <textarea class="reply-input" rows="4" placeholder="اكتب رد الفريق...">${esc(d.reply || '')}</textarea>
-            <button class="btn primary reply-inquiry" data-id="${doc.id}">
-              ${d.reply ? 'تحديث الرد' : 'إرسال الرد'}
-            </button>
-            <button class="btn mini danger delete-inquiry" data-id="${doc.id}">حذف</button>
-          </div>
-        </article>
-      `;
-    }).join('');
+
+              <h4>
+                ${esc(d.title)}
+              </h4>
+
+              <p>
+                ${esc(d.message)}
+              </p>
+
+              <small>
+                المستخدم:
+                ${esc(u.fullName || 'عضو')}
+                —
+                ${esc(u.email || '')}
+              </small>
+
+              ${
+                d.reply
+                  ? `
+                    <div class="inquiry-reply">
+
+                      <strong>
+                        الرد الحالي
+                      </strong>
+
+                      <p>
+                        ${esc(d.reply)}
+                      </p>
+
+                    </div>
+                  `
+                  : ''
+              }
+
+            </div>
+
+            <div class="inquiry-actions">
+
+              <textarea
+                class="reply-input"
+                rows="4"
+                placeholder="اكتب رد الفريق..."
+              >${esc(d.reply || '')}</textarea>
+
+              <button
+                class="btn primary reply-inquiry"
+                data-id="${doc.id}"
+              >
+                ${
+                  d.reply
+                    ? 'تحديث الرد'
+                    : 'إرسال الرد'
+                }
+              </button>
+
+              <button
+                class="btn mini danger delete-inquiry"
+                data-id="${doc.id}"
+              >
+                حذف
+              </button>
+
+            </div>
+
+          </article>
+        `;
+
+      }).join('');
 
   } catch (e) {
+
     console.error(e);
-    box.innerHTML = '<div class="empty-state">تعذر تحميل الاستفسارات.</div>';
+
+    box.innerHTML =
+      '<div class="empty-state">تعذر تحميل الاستفسارات.</div>';
+
   }
+
 }
 
 
@@ -547,161 +900,378 @@ async function loadInquiries(){
 // الأحداث
 // ======================================================
 
-$('category').addEventListener('change', () => {
-  $('eventDateWrap').hidden = $('category').value !== 'events';
-});
+$('category').addEventListener(
+  'change',
+  () => {
 
-$('filterCategory').addEventListener('change', loadPosts);
-$('cancelEdit').addEventListener('click', resetForm);
-$('refreshInquiries').addEventListener('click', loadInquiries);
+    $('eventDateWrap').hidden =
+      $('category').value !== 'events';
+
+  }
+);
+
+$('filterCategory').addEventListener(
+  'change',
+  loadPosts
+);
+
+$('cancelEdit').addEventListener(
+  'click',
+  resetForm
+);
+
+$('refreshInquiries').addEventListener(
+  'click',
+  loadInquiries
+);
 
 
 // ======================================================
 // أزرار المنشورات
 // ======================================================
 
-$('postsList').addEventListener('click', e => {
-  const edit = e.target.closest('.edit-post');
-  const del = e.target.closest('.delete-post');
-  if (edit) loadForEdit(edit.dataset.id, edit.dataset.category);
-  if (del) deletePost(del.dataset.id, del.dataset.category);
-});
+$('postsList').addEventListener(
+  'click',
+  e => {
+
+    const edit =
+      e.target.closest('.edit-post');
+
+    const del =
+      e.target.closest('.delete-post');
+
+    if (edit) {
+      loadForEdit(
+        edit.dataset.id,
+        edit.dataset.category
+      );
+    }
+
+    if (del) {
+      deletePost(
+        del.dataset.id,
+        del.dataset.category
+      );
+    }
+
+  }
+);
 
 
 // ======================================================
 // الاستفسارات - رد وحذف
 // ======================================================
 
-$('inquiriesList').addEventListener('click', async e => {
-  const reply = e.target.closest('.reply-inquiry');
-  const del = e.target.closest('.delete-inquiry');
+$('inquiriesList').addEventListener(
+  'click',
+  async e => {
 
-  if (reply) {
-    const card = reply.closest('.admin-inquiry');
-    const text = card.querySelector('.reply-input').value.trim();
-    if (!text) { alert('اكتب الرد أولًا.'); return; }
+    const reply =
+      e.target.closest('.reply-inquiry');
 
-    reply.disabled = true;
-    try {
-      await db.collection('inquiries').doc(reply.dataset.id).update({
-        reply: text,
-        repliedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        status: 'replied'
-      });
-      await loadInquiries();
-    } catch (err) {
-      console.error(err);
-      alert('تعذر حفظ الرد.');
-    } finally {
-      reply.disabled = false;
+    const del =
+      e.target.closest('.delete-inquiry');
+
+    if (reply) {
+
+      const card =
+        reply.closest('.admin-inquiry');
+
+      const text =
+        card
+          .querySelector('.reply-input')
+          .value
+          .trim();
+
+      if (!text) {
+
+        alert('اكتب الرد أولًا.');
+
+        return;
+      }
+
+      reply.disabled = true;
+
+      try {
+
+        await db
+          .collection('inquiries')
+          .doc(reply.dataset.id)
+          .update({
+            reply: text,
+            repliedAt:
+              firebase.firestore.FieldValue
+                .serverTimestamp(),
+            status: 'replied'
+          });
+
+        await loadInquiries();
+
+      } catch (err) {
+
+        console.error(err);
+
+        alert(
+          'تعذر حفظ الرد.'
+        );
+
+      } finally {
+
+        reply.disabled = false;
+
+      }
+
     }
-  }
 
-  if (del) {
-    if (!confirm('حذف الاستفسار نهائيًا؟')) return;
-    try {
-      await db.collection('inquiries').doc(del.dataset.id).delete();
-      await loadInquiries();
-    } catch (err) {
-      console.error(err);
-      alert('تعذر حذف الاستفسار.');
+    if (del) {
+
+      if (
+        !confirm(
+          'حذف الاستفسار نهائيًا؟'
+        )
+      ) {
+        return;
+      }
+
+      try {
+
+        await db
+          .collection('inquiries')
+          .doc(del.dataset.id)
+          .delete();
+
+        await loadInquiries();
+
+      } catch (err) {
+
+        console.error(err);
+
+        alert(
+          'تعذر حذف الاستفسار.'
+        );
+
+      }
+
     }
+
   }
-});
+);
 
 
 // ======================================================
 // حفظ المنشور
 // ======================================================
 
-$('postForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  showMessage('جاري الحفظ...');
+$('postForm').addEventListener(
+  'submit',
+  async e => {
 
-  const key = $('category').value;
-  const cfg = ADMIN_CATEGORIES[key];
-  const id = $('editingId').value.trim();
+    e.preventDefault();
 
-  if (!canManage(key)) {
-    showMessage('ليست لديك صلاحية لإدارة هذا القسم.');
-    return;
-  }
+    showMessage(
+      'جاري الحفظ...'
+    );
 
-  const data = {
-    title: $('title').value.trim(),
-    content: $('content').value.trim(),
-    category: key,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
+    const key =
+      $('category').value;
 
-  if (key === 'events' && $('eventDate').value) {
-    data.eventDate = $('eventDate').value;
-  } else if (key === 'events') {
-    data.eventDate = '';
-  }
+    const cfg =
+      ADMIN_CATEGORIES[key];
 
-  try {
-    // صورة جديدة
-    if (selectedImageData) {
-      data.imageData = selectedImageData;
-      data.imageUrl = firebase.firestore.FieldValue.delete();
-    }
-    // إزالة الصورة
-    else if (id && removeExistingImage) {
-      data.imageData = firebase.firestore.FieldValue.delete();
-      data.imageUrl = firebase.firestore.FieldValue.delete();
+    const id =
+      $('editingId').value.trim();
+
+    if (!canManage(key)) {
+
+      showMessage(
+        'ليست لديك صلاحية لإدارة هذا القسم.'
+      );
+
+      return;
     }
 
-    // منشور جديد أو تعديل
-    if (id) {
-      await db.collection(cfg.collection).doc(id).update(data);
-    } else {
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      data.authorId = currentUser.uid;
-      await db.collection(cfg.collection).add(data);
-    }
+    const data = {
 
-    showMessage(id ? 'تم تعديل المنشور بنجاح.' : 'تمت إضافة المنشور بنجاح.', true);
-    resetForm();
-    await loadPosts();
-} catch (err) {
-    console.error('SAVE POST ERROR:', err);
+      title:
+        $('title').value.trim(),
 
-    const code = err?.code || '';
-    const message = String(err?.message || '');
+      content:
+        $('content').value.trim(),
+
+      category:
+        key,
+
+      updatedAt:
+        firebase.firestore.FieldValue
+          .serverTimestamp()
+
+    };
 
     if (
-      code === 'resource-exhausted' ||
-      message.toLowerCase().includes('1 mib') ||
-      message.toLowerCase().includes('maximum')
+      key === 'events' &&
+      $('eventDate').value
     ) {
-      showMessage('الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.');
-    } else if (code === 'permission-denied') {
-      showMessage('لا توجد صلاحية لحفظ المنشور في هذا القسم.');
-    } else if (code === 'failed-precondition') {
-      showMessage('يوجد إعداد ناقص في Firestore.');
-    } else {
-      showMessage('خطأ الحفظ: ' + (message || code || 'خطأ غير معروف'));
+
+      data.eventDate =
+        $('eventDate').value;
+
+    } else if (key === 'events') {
+
+      data.eventDate = '';
+
     }
 
-    alert(
-      'خطأ الحفظ الحقيقي:\n\n' +
-      (message || code || 'خطأ غير معروف')
-    );
+    try {
+
+      // صورة جديدة
+      if (selectedImageData) {
+
+        data.imageData =
+          selectedImageData;
+
+        data.imageUrl =
+          firebase.firestore.FieldValue
+            .delete();
+
+      }
+
+      // إزالة الصورة
+      else if (
+        id &&
+        removeExistingImage
+      ) {
+
+        data.imageData =
+          firebase.firestore.FieldValue
+            .delete();
+
+        data.imageUrl =
+          firebase.firestore.FieldValue
+            .delete();
+
+      }
+
+      // منشور جديد أو تعديل
+      if (id) {
+
+        await db
+          .collection(cfg.collection)
+          .doc(id)
+          .update(data);
+
+      } else {
+
+        data.createdAt =
+          firebase.firestore.FieldValue
+            .serverTimestamp();
+
+        data.authorId =
+          currentUser.uid;
+
+        await db
+          .collection(cfg.collection)
+          .add(data);
+
+      }
+
+      showMessage(
+        id
+          ? 'تم تعديل المنشور بنجاح.'
+          : 'تمت إضافة المنشور بنجاح.',
+        true
+      );
+
+      resetForm();
+
+      await loadPosts();
+
+    } catch (err) {
+console.error(
+        'SAVE POST ERROR:',
+        err
+      );
+
+      const code =
+        err?.code || '';
+
+      const message =
+        String(
+          err?.message || ''
+        );
+
+      if (
+        code === 'resource-exhausted' ||
+        message
+          .toLowerCase()
+          .includes('1 mib') ||
+        message
+          .toLowerCase()
+          .includes('maximum')
+      ) {
+
+        showMessage(
+          'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'
+        );
+
+      } else if (
+        code === 'permission-denied'
+      ) {
+
+        showMessage(
+          'لا توجد صلاحية لحفظ المنشور في هذا القسم.'
+        );
+
+      } else if (
+        code === 'failed-precondition'
+      ) {
+
+        showMessage(
+          'يوجد إعداد ناقص في Firestore.'
+        );
+
+      } else {
+
+        showMessage(
+          'خطأ الحفظ: ' +
+          (
+            message ||
+            code ||
+            'خطأ غير معروف'
+          )
+        );
+
+      }
+
+      alert(
+        'خطأ الحفظ الحقيقي:\n\n' +
+        (
+          message ||
+          code ||
+          'خطأ غير معروف'
+        )
+      );
+
+    }
+
   }
-});
- 
-});
+);
 
 
 // ======================================================
 // تسجيل الخروج - يرجع للرئيسية
 // ======================================================
 
-$('logoutBtn').addEventListener('click', async () => {
-  await auth.signOut();
-  location.href = 'index.html';
-});
+$('logoutBtn').addEventListener(
+  'click',
+  async () => {
+
+    await auth.signOut();
+
+    location.href =
+      'index.html';
+
+  }
+);
 
 
 // ======================================================
@@ -709,12 +1279,24 @@ $('logoutBtn').addEventListener('click', async () => {
 // ======================================================
 
 function updateAdminNotificationBadge(count){
-  const b = document.getElementById('adminNotificationBadge');
+
+  const b =
+    document.getElementById(
+      'adminNotificationBadge'
+    );
+
   if (!b) return;
-  b.textContent = count > 0
-    ? '🔔 ' + count + ' استفسار جديد'
-    : '🔔 لا توجد استفسارات جديدة';
-  b.classList.toggle('has-alert', count > 0);
+
+  b.textContent =
+    count > 0
+      ? '🔔 ' + count + ' استفسار جديد'
+      : '🔔 لا توجد استفسارات جديدة';
+
+  b.classList.toggle(
+    'has-alert',
+    count > 0
+  );
+
 }
 
 
@@ -722,154 +1304,263 @@ function updateAdminNotificationBadge(count){
 // التحقق من الحساب والصلاحيات
 // ======================================================
 
-auth.onAuthStateChanged(async user => {
+auth.onAuthStateChanged(
+  async user => {
 
-  console.log('ADMIN AUTH CHECK:', user ? user.uid : 'NO USER');
+    console.log(
+      'ADMIN AUTH CHECK:',
+      user
+        ? user.uid
+        : 'NO USER'
+    );
 
-  if (!user) {
-    location.href = 'login.html?next=admin.html';
-    return;
-  }
+    if (!user) {
 
-  currentUser = user;
-
-  try {
-
-    console.log('ADMIN: جاري قراءة بيانات المستخدم...');
-
-    const doc = await db.collection('users').doc(user.uid).get();
-
-    console.log('ADMIN USER DOC:', doc.exists ? doc.data() : 'DOCUMENT NOT FOUND');
-
-    if (!doc.exists) {
-      $('adminGate').innerHTML =
-        'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
-        '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
-      return;
-    }
-
-    const userData = doc.data();
-    const role = String(userData.role || 'user').trim().toLowerCase();
-
-    console.log('ADMIN ROLE:', role);
-
-    if (!['admin', 'supervisor'].includes(role)) {
-
-      $('adminGate').innerHTML =
-        'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
-        '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+      location.href =
+        'login.html?next=admin.html';
 
       return;
     }
 
-    currentUserRole = role;
+    currentUser =
+      user;
 
-    currentPermissions = Array.isArray(userData.permissions)
-      ? userData.permissions
-      : [];
+    try {
 
-    $('adminGate').hidden = true;
-    $('adminApp').hidden = false;
+      console.log(
+        'ADMIN: جاري قراءة بيانات المستخدم...'
+      );
 
-    $('adminEmail').textContent =
-      'المشرف: ' +
-      (user.email || '') +
-      ' — ' +
-      (currentUserRole === 'admin'
-        ? 'مدير كامل'
-        : 'مشرف متخصص');
+      const doc =
+        await db
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-    // المشرف المتخصص
-    if (currentUserRole !== 'admin') {
+      console.log(
+        'ADMIN USER DOC:',
+        doc.exists
+          ? doc.data()
+          : 'DOCUMENT NOT FOUND'
+      );
 
-      $('filterCategory').querySelectorAll('option').forEach(o => {
+      if (!doc.exists) {
 
-        if (
-          o.value !== 'all' &&
-          !canManage(o.value)
-        ) {
-          o.hidden = true;
-        }
+        $('adminGate').innerHTML =
+          'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
 
-      });
-
-      $('category').querySelectorAll('option').forEach(o => {
-
-        if (!canManage(o.value)) {
-          o.remove();
-        }
-
-      });
-
-      $('supervisorsCard').hidden = true;
-
-      const inquiriesCard =
-        $('inquiriesList').closest('.admin-wide-card');
-
-      if (inquiriesCard) {
-        inquiriesCard.hidden = !canManage('inquiries');
+        return;
       }
 
-      const canManagePosts =
-        Object.keys(ADMIN_CATEGORIES).some(canManage);
+      const userData =
+        doc.data();
 
-      $('postForm').hidden = !canManagePosts;
+      const role =
+        String(
+          userData.role || 'user'
+        )
+          .trim()
+          .toLowerCase();
 
-      const postsCard =
-        $('postsList').closest('.admin-card');
+      console.log(
+        'ADMIN ROLE:',
+        role
+      );
 
-      if (postsCard) {
-        postsCard.hidden = !canManagePosts;
+      if (
+        !['admin', 'supervisor']
+          .includes(role)
+      ) {
+
+        $('adminGate').innerHTML =
+          'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+        return;
       }
 
-    }
+      currentUserRole =
+        role;
 
-    console.log('ADMIN: جاري تحميل المنشورات...');
+      currentPermissions =
+        Array.isArray(
+          userData.permissions
+        )
+          ? userData.permissions
+          : [];
 
-    await loadPosts();
+      $('adminGate').hidden =
+        true;
 
-    console.log('ADMIN: تم تحميل المنشورات.');
+      $('adminApp').hidden =
+        false;
 
-    if (canManage('inquiries')) {
+      $('adminEmail').textContent =
+        'المشرف: ' +
+        (user.email || '') +
+        ' — ' +
+        (
+          currentUserRole === 'admin'
+            ? 'مدير كامل'
+            : 'مشرف متخصص'
+        );
 
-      await loadInquiries();
 
-      if (window.WasitNotifications) {
+      // المشرف المتخصص
+      if (
+        currentUserRole !== 'admin'
+      ) {
 
-        stopAdminNotifications =
-          WasitNotifications.listenAdminInquiries(
-            user,
-            updateAdminNotificationBadge
+        $('filterCategory')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              o.value !== 'all' &&
+              !canManage(o.value)
+            ) {
+
+              o.hidden =
+                true;
+
+            }
+
+          });
+
+        $('category')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              !canManage(o.value)
+            ) {
+
+              o.remove();
+
+            }
+
+          });
+
+        $('supervisorsCard').hidden =
+          true;
+
+        const inquiriesCard =
+          $('inquiriesList')
+            .closest(
+              '.admin-wide-card'
+            );
+
+        if (inquiriesCard) {
+
+          inquiriesCard.hidden =
+            !canManage(
+              'inquiries'
+            );
+
+        }
+
+        const canManagePosts =
+          Object.keys(
+            ADMIN_CATEGORIES
+          ).some(
+            canManage
           );
 
+        $('postForm').hidden =
+          !canManagePosts;
+
+        const postsCard =
+          $('postsList')
+            .closest(
+              '.admin-card'
+            );
+
+        if (postsCard) {
+
+          postsCard.hidden =
+            !canManagePosts;
+
+        }
+
       }
 
+
+      console.log(
+        'ADMIN: جاري تحميل المنشورات...'
+      );
+
+      await loadPosts();
+
+      console.log(
+        'ADMIN: تم تحميل المنشورات.'
+      );
+
+
+      if (
+        canManage('inquiries')
+      ) {
+
+        await loadInquiries();
+
+        if (
+          window.WasitNotifications
+        ) {
+
+          stopAdminNotifications =
+            WasitNotifications
+              .listenAdminInquiries(
+                user,
+                updateAdminNotificationBadge
+              );
+
+        }
+
+      }
+
+
+      if (
+        typeof loadSupervisors ===
+        'function' &&
+        currentUserRole === 'admin'
+      ) {
+
+        await loadSupervisors();
+
+      }
+
+
+      if (
+        typeof refreshDashboard ===
+        'function'
+      ) {
+
+        await refreshDashboard();
+
+      }
+
+      console.log(
+        'ADMIN: تم فتح لوحة التحكم بنجاح.'
+      );
+
+    } catch (e) {
+
+      console.error(
+        'ADMIN ACCESS ERROR:',
+        e
+      );
+
+      $('adminGate').innerHTML =
+        'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +
+        '<small>' +
+        (
+          e?.message ||
+          e?.code ||
+          'خطأ غير معروف'
+        ) +
+        '</small>';
+
     }
-
-    if (
-      typeof loadSupervisors === 'function' &&
-      currentUserRole === 'admin'
-    ) {
-      await loadSupervisors();
-    }
-
-    if (typeof refreshDashboard === 'function') {
-      await refreshDashboard();
-    }
-
-    console.log('ADMIN: تم فتح لوحة التحكم بنجاح.');
-
-  } catch (e) {
-
-    console.error('ADMIN ACCESS ERROR:', e);
-
-    $('adminGate').innerHTML =
-      'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +
-      '<small>' +
-      (e?.message || e?.code || 'خطأ غير معروف') +
-      '</small>';
 
   }
-
-});
-
+);
