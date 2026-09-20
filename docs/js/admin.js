@@ -56,7 +56,6 @@ function showImagePreview(src){
   previewImg.src = src;
   preview.hidden = false;
 }
-
 async function compressImage(file){
   if (!file || !file.type.startsWith('image/')) {
     throw new Error('الملف المختار ليس صورة.');
@@ -72,8 +71,8 @@ async function compressImage(file){
       img.src = originalUrl;
     });
 
-    // الحد الأقصى للأبعاد
-    const MAX_SIZE = 800;
+    // ✅ صغّرنا الأبعاد أكثر
+    const MAX_SIZE = 700;
     let width = img.naturalWidth;
     let height = img.naturalHeight;
 
@@ -95,29 +94,27 @@ async function compressImage(file){
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, width, height);
 
-    // نحاول بجودة 0.7
+    // ✅ نحاول بجودة 0.7
     let blob = await new Promise(resolve =>
       canvas.toBlob(resolve, 'image/jpeg', 0.7)
     );
 
-    if (!blob) throw new Error('تعذر ضغط الصورة.');
-
-    // إذا الحجم أكبر من 400KB، نقلل الجودة
-    if (blob.size > 400 * 1024) {
+    // ✅ إذا أكبر من 300KB → نقلل
+    if (blob.size > 300 * 1024) {
       blob = await new Promise(resolve =>
         canvas.toBlob(resolve, 'image/jpeg', 0.5)
       );
     }
 
-    // إذا لسه أكبر من 700KB، نقلل أكثر
-    if (blob.size > 700 * 1024) {
+    // ✅ إذا لسه أكبر من 500KB → نقلل أكثر
+    if (blob.size > 500 * 1024) {
       blob = await new Promise(resolve =>
         canvas.toBlob(resolve, 'image/jpeg', 0.3)
       );
     }
 
-    // إذا لسه أكبر من 900KB، نرفض
-    if (blob.size > 900 * 1024) {
+    // ✅ إذا لسه أكبر من 600KB → نرفض
+    if (blob.size > 600 * 1024) {
       throw new Error('الصورة كبيرة جداً. جرّب صورة أصغر.');
     }
 
