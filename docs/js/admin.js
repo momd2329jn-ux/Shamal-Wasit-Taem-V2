@@ -23,11 +23,11 @@ environment: { title: 'البيئة', icon: '🌱', collection: 'environment' }
 const $ = id => document.getElementById(id);
 
 const esc = v => String(v || '').replace(/[&<>'"]/g, c => ({
-'&': '&',
-'<': '<',
-'>': '>',
-"'": ''',
-'"': '"'
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  "'": '&#39;',
+  '"': '&quot;'
 }[c]));
 
 // ======================================================
