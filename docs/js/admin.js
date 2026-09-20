@@ -38,100 +38,239 @@ const esc = v => String(v || '').replace(/[&<>'"]/g, c => ({
 let selectedImageData = null;
 let removeExistingImage = false;
 
-function clearImageState(){
+function clearImageState() {
+
   selectedImageData = null;
   removeExistingImage = false;
+
   const input = $('imageFile');
-  if (input) input.value = '';
+
+  if (input) {
+    input.value = '';
+  }
+
   const preview = $('imagePreview');
   const previewImg = $('imagePreviewImg');
-  if (preview) preview.hidden = true;
-  if (previewImg) previewImg.removeAttribute('src');
+
+  if (preview) {
+    preview.hidden = true;
+  }
+
+  if (previewImg) {
+    previewImg.removeAttribute('src');
+  }
+
 }
 
-function showImagePreview(src){
+function showImagePreview(src) {
+
   const preview = $('imagePreview');
   const previewImg = $('imagePreviewImg');
-  if (!preview || !previewImg) return;
+
+  if (!preview || !previewImg) {
+    return;
+  }
+
   previewImg.src = src;
   preview.hidden = false;
+
 }
-async function compressImage(file){
+
+
+// ======================================================
+// ضغط الصور - Firestore Base64
+// ======================================================
+
+async function compressImage(file) {
+
   if (!file || !file.type.startsWith('image/')) {
     throw new Error('الملف المختار ليس صورة.');
   }
 
-  const originalUrl = URL.createObjectURL(file);
+  const originalUrl =
+    URL.createObjectURL(file);
 
   try {
+
     const img = new Image();
-    await new Promise((resolve, reject) => {
+
+    await new Promise(function (resolve, reject) {
+
       img.onload = resolve;
-      img.onerror = () => reject(new Error('تعذر فتح الصورة.'));
+
+      img.onerror = function () {
+        reject(
+          new Error('تعذر فتح الصورة.')
+        );
+      };
+
       img.src = originalUrl;
+
     });
 
-    // ✅ صغّرنا الأبعاد أكثر
-    const MAX_SIZE = 700;
-    let width = img.naturalWidth;
-    let height = img.naturalHeight;
 
-    if (width > MAX_SIZE || height > MAX_SIZE) {
-      if (width >= height) {
-        height = Math.round(height * (MAX_SIZE / width));
-        width = MAX_SIZE;
-      } else {
-        width = Math.round(width * (MAX_SIZE / height));
-        height = MAX_SIZE;
+    // أحجام الصورة التي سيتم تجربتها
+    const dimensions = [
+      900,
+      800,
+      700,
+      600
+    ];
+
+    // مستويات الضغط
+    const qualities = [
+      0.72,
+      0.62,
+      0.52,
+      0.42,
+      0.32
+    ];
+
+    // حجم الصورة الثنائية قبل Base64
+    // حتى تبقى داخل الحد الآمن لـ Firestore
+    const MAX_BLOB_SIZE = 250 * 1024;
+
+
+    for (const MAX_SIZE of dimensions) {
+
+      let width = img.naturalWidth;
+      let height = img.naturalHeight;
+
+
+      if (
+        width > MAX_SIZE ||
+        height > MAX_SIZE
+      ) {
+
+        if (width >= height) {
+
+          height = Math.round(
+            height * (MAX_SIZE / width)
+          );
+
+          width = MAX_SIZE;
+
+        } else {
+
+          width = Math.round(
+            width * (MAX_SIZE / height)
+          );
+
+          height = MAX_SIZE;
+
+        }
+
       }
+
+
+      const canvas =
+        document.createElement('canvas');
+
+      canvas.width = width;
+      canvas.height = height;
+
+
+      const ctx =
+        canvas.getContext('2d');
+
+      if (!ctx) {
+        throw new Error(
+          'تعذر تجهيز الصورة.'
+        );
+      }
+
+
+      // خلفية بيضاء للصور الشفافة
+      ctx.fillStyle = '#ffffff';
+
+      ctx.fillRect(
+        0,
+        0,
+        width,
+        height
+      );
+
+
+      ctx.drawImage(
+        img,
+        0,
+        0,
+        width,
+        height
+      );
+
+
+      for (const quality of qualities) {
+
+        const blob =
+          await new Promise(function (resolve) {
+
+            canvas.toBlob(
+              resolve,
+              'image/jpeg',
+              quality
+            );
+
+          });
+
+
+        if (!blob) {
+          continue;
+        }
+
+
+        if (
+          blob.size <= MAX_BLOB_SIZE
+        ) {
+
+          const dataUrl =
+            await new Promise(
+              function (resolve, reject) {
+
+                const reader =
+                  new FileReader();
+
+                reader.onload = function () {
+                  resolve(reader.result);
+                };
+
+                reader.onerror = function () {
+                  reject(
+                    new Error(
+                      'تعذر قراءة الصورة.'
+                    )
+                  );
+                };
+
+                reader.readAsDataURL(blob);
+
+              }
+            );
+
+
+          return dataUrl;
+
+        }
+
+      }
+
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    ctx.drawImage(img, 0, 0, width, height);
 
-    // ✅ نحاول بجودة 0.7
-    let blob = await new Promise(resolve =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.7)
+    throw new Error(
+      'الصورة كبيرة جدًا. جرّب صورة أصغر.'
     );
 
-    // ✅ إذا أكبر من 300KB → نقلل
-    if (blob.size > 300 * 1024) {
-      blob = await new Promise(resolve =>
-        canvas.toBlob(resolve, 'image/jpeg', 0.5)
-      );
-    }
-
-    // ✅ إذا لسه أكبر من 500KB → نقلل أكثر
-    if (blob.size > 500 * 1024) {
-      blob = await new Promise(resolve =>
-        canvas.toBlob(resolve, 'image/jpeg', 0.3)
-      );
-    }
-
-    // ✅ إذا لسه أكبر من 600KB → نرفض
-    if (blob.size > 600 * 1024) {
-      throw new Error('الصورة كبيرة جداً. جرّب صورة أصغر.');
-    }
-
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('تعذر قراءة الصورة'));
-      reader.readAsDataURL(new File([blob], 'post.jpg', { type: 'image/jpeg' }));
-    });
-
-    return dataUrl;
 
   } finally {
-    URL.revokeObjectURL(originalUrl);
-  }
-}
 
+    URL.revokeObjectURL(
+      originalUrl
+    );
+
+  }
+
+}
 // اختيار صورة من الجهاز
 const imageFileInput = $('imageFile');
 
