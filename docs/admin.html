@@ -128,6 +128,53 @@
 <script src="js/dashboard.js"></script>
 <script src="js/site-icons-admin.js"></script>
 <script src="js/app.js"></script>
+  <script>
+// ======================================================
+// كود الهيدر الذكي - مباشر
+// ======================================================
+(function(){
+  function updateNav(){
+    var authLink = document.querySelector('[data-nav="auth"]');
+    var member = document.querySelector('[data-nav="member"]');
+    var admin = document.querySelector('[data-nav="admin"]');
+    if(!authLink || !member || !admin) return;
+
+    if(!window.auth || !window.db){
+      setTimeout(updateNav, 200);
+      return;
+    }
+
+    auth.onAuthStateChanged(function(user){
+      if(!user || user.isAnonymous){
+        authLink.removeAttribute('hidden');
+        member.setAttribute('hidden','');
+        admin.setAttribute('hidden','');
+        return;
+      }
+
+      authLink.setAttribute('hidden','');
+      member.removeAttribute('hidden');
+
+      db.collection('users').doc(user.uid).get().then(function(s){
+        var role = s.exists ? String(s.data().role || 'user').toLowerCase() : 'user';
+        if(role === 'admin' || role === 'supervisor'){
+          admin.removeAttribute('hidden');
+        } else {
+          admin.setAttribute('hidden','');
+        }
+      }).catch(function(){
+        admin.setAttribute('hidden','');
+      });
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', updateNav);
+  } else {
+    updateNav();
+  }
+})();
+</script>
 <script>document.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("refreshDashboard");if(b)b.addEventListener("click",refreshDashboard);});
 </script>
 </body>
