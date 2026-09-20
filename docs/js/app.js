@@ -1,91 +1,181 @@
 // ======================================================
 // app.js - الهيدر الذكي
+// فريق شمال واسط
 // ======================================================
 
 (function () {
 
+  function setHidden(element, hidden) {
+    if (!element) return;
+
+    if (hidden) {
+      element.setAttribute('hidden', '');
+    } else {
+      element.removeAttribute('hidden');
+    }
+  }
+
   function applyNav(user) {
-    var authLink = document.querySelector('[data-nav="auth"]');
-    var member = document.querySelector('[data-nav="member"]');
-    var admin = document.querySelector('[data-nav="admin"]');
+    const authLink = document.querySelector('[data-nav="auth"]');
+    const memberLink = document.querySelector('[data-nav="member"]');
+    const adminLink = document.querySelector('[data-nav="admin"]');
 
-    if (!authLink || !member || !admin) {
-      console.log('NAV: عناصر الهيدر مو موجودة');
+    if (!authLink || !memberLink || !adminLink) {
       return;
     }
 
-    // زائر: تسجيل الدخول ظاهر، الباقي مخفي
+    // ==============================
+    // زائر
+    // ==============================
     if (!user || user.isAnonymous === true) {
-      authLink.removeAttribute('hidden');
-      member.setAttribute('hidden', '');
-      admin.setAttribute('hidden', '');
-      console.log('NAV: زائر');
+      setHidden(authLink, false);
+      setHidden(memberLink, true);
+      setHidden(adminLink, true);
       return;
     }
 
-    // مسجّل: تسجيل الدخول مخفي، حسابي ظاهر
-    authLink.setAttribute('hidden', '');
-    member.removeAttribute('hidden');
-    console.log('NAV: مسجل - UID:', user.uid);
+    // ==============================
+    // عضو مسجل
+    // ==============================
+    setHidden(authLink, true);
+    setHidden(memberLink, false);
+    setHidden(adminLink, true);
 
-    // نقرأ الدور
-    db.collection('users').doc(user.uid).get()
+    if (!window.db) {
+      return;
+    }
+
+    // ==============================
+    // التحقق من صلاحية المستخدم
+    // ==============================
+    db.collection('users')
+      .doc(user.uid)
+      .get()
       .then(function (snap) {
-        var role = snap.exists
-          ? String(snap.data().role || 'user').trim().toLowerCase()
+
+        const role = snap.exists
+          ? String(snap.data().role || 'user')
+              .trim()
+              .toLowerCase()
           : 'user';
 
-        console.log('NAV: الدور =', role);
-
         if (role === 'admin' || role === 'supervisor') {
-          admin.removeAttribute('hidden');
-          console.log('NAV: لوحة التحكم ظاهرة');
+          setHidden(adminLink, false);
         } else {
-          admin.setAttribute('hidden', '');
+          setHidden(adminLink, true);
         }
+
       })
-      .catch(function (e) {
-        console.error('NAV ROLE ERROR:', e);
-        admin.setAttribute('hidden', '');
+      .catch(function (error) {
+
+        console.error('NAV ROLE ERROR:', error);
+        setHidden(adminLink, true);
+
       });
   }
 
+  // ==============================
   // انتظار Firebase
-  function waitFirebase() {
+  // ==============================
+  function waitForFirebase() {
+
     if (window.auth && window.db) {
-      console.log('NAV: Firebase جاهز');
       auth.onAuthStateChanged(applyNav);
-    } else {
-      setTimeout(waitFirebase, 100);
+      return;
     }
+
+    setTimeout(waitForFirebase, 100);
   }
 
+  // ==============================
+  // قائمة الهاتف
+  // ==============================
   function initMenu() {
-    var b = document.getElementById('menuButton');
-    var n = document.getElementById('mainNav');
-    if (!n) return;
-    if (b) b.addEventListener('click', function () {
-      n.classList.toggle('open');
-    });
-    n.addEventListener('click', function (e) {
-      if (e.target.closest('a')) n.classList.remove('open');
+
+    const button = document.getElementById('menuButton');
+    const nav = document.getElementById('mainNav');
+
+    if (!nav) {
+      return;
+    }
+
+    if (button) {
+
+      button.addEventListener('click', function () {
+
+        nav.classList.toggle('open');
+
+        const opened =
+          nav.classList.contains('open');
+
+        button.setAttribute(
+          'aria-expanded',
+          String(opened)
+        );
+
+      });
+
+    }
+
+    nav.addEventListener('click', function (event) {
+
+      const link =
+        event.target.closest('a');
+
+      if (!link) {
+        return;
+      }
+
+      nav.classList.remove('open');
+
+      if (button) {
+        button.setAttribute(
+          'aria-expanded',
+          'false'
+        );
+      }
+
     });
   }
 
+  // ==============================
+  // تشغيل
+  // ==============================
   function start() {
-    console.log('NAV: app.js بدأ');
+
     initMenu();
-    waitFirebase();
+    waitForFirebase();
+
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      start
+    );
+
   } else {
+
     start();
+
   }
 
+  // ==============================
+  // Service Worker
+  // ==============================
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(function () {});
-  }
-})();
 
+    window.addEventListener('load', function () {
+
+      navigator.serviceWorker
+        .register('sw.js')
+        .catch(function (error) {
+          console.warn('SW:', error);
+        });
+
+    });
+
+  }
+
+})();
