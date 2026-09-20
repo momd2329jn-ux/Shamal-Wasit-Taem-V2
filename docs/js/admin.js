@@ -4,7 +4,7 @@
 // ======================================================
 
 function canManage(key){
-  return currentUserRole === 'admin' || (currentPermissions || []).includes(key);
+return currentUserRole === 'admin' || (currentPermissions || []).includes(key);
 }
 
 let currentUserRole = 'user';
@@ -13,23 +13,22 @@ let stopAdminNotifications = null;
 let currentUser = null;
 
 const ADMIN_CATEGORIES = {
-  news: { title: 'الأخبار', icon: '📰', collection: 'news' },
-  events: { title: 'الفعاليات', icon: '📅', collection: 'events' },
-  articles: { title: 'المقالات', icon: '📚', collection: 'articles' },
-  health: { title: 'الصحة', icon: '🩺', collection: 'health' },
-  environment: { title: 'البيئة', icon: '🌱', collection: 'environment' }
+news: { title: 'الأخبار', icon: '📰', collection: 'news' },
+events: { title: 'الفعاليات', icon: '📅', collection: 'events' },
+articles: { title: 'المقالات', icon: '📚', collection: 'articles' },
+health: { title: 'الصحة', icon: '🩺', collection: 'health' },
+environment: { title: 'البيئة', icon: '🌱', collection: 'environment' }
 };
 
 const $ = id => document.getElementById(id);
 
 const esc = v => String(v || '').replace(/[&<>'"]/g, c => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  "'": '&#39;',
-  '"': '&quot;'
+'&': '&',
+'<': '<',
+'>': '>',
+"'": ''',
+'"': '"'
 }[c]));
-
 
 // ======================================================
 // الصور - ضغط قوي لضمان الحجم أقل من 1MB
@@ -40,42 +39,41 @@ let removeExistingImage = false;
 
 function clearImageState() {
 
-  selectedImageData = null;
-  removeExistingImage = false;
+selectedImageData = null;
+removeExistingImage = false;
 
-  const input = $('imageFile');
+const input = $('imageFile');
 
-  if (input) {
-    input.value = '';
-  }
+if (input) {
+input.value = '';
+}
 
-  const preview = $('imagePreview');
-  const previewImg = $('imagePreviewImg');
+const preview = $('imagePreview');
+const previewImg = $('imagePreviewImg');
 
-  if (preview) {
-    preview.hidden = true;
-  }
+if (preview) {
+preview.hidden = true;
+}
 
-  if (previewImg) {
-    previewImg.removeAttribute('src');
-  }
+if (previewImg) {
+previewImg.removeAttribute('src');
+}
 
 }
 
 function showImagePreview(src) {
 
-  const preview = $('imagePreview');
-  const previewImg = $('imagePreviewImg');
+const preview = $('imagePreview');
+const previewImg = $('imagePreviewImg');
 
-  if (!preview || !previewImg) {
-    return;
-  }
-
-  previewImg.src = src;
-  preview.hidden = false;
-
+if (!preview || !previewImg) {
+return;
 }
 
+previewImg.src = src;
+preview.hidden = false;
+
+}
 
 // ======================================================
 // ضغط الصور - Firestore Base64
@@ -83,196 +81,193 @@ function showImagePreview(src) {
 
 async function compressImage(file) {
 
-  if (!file || !file.type.startsWith('image/')) {
-    throw new Error('الملف المختار ليس صورة.');
-  }
+if (!file || !file.type.startsWith('image/')) {
+throw new Error('الملف المختار ليس صورة.');
+}
 
-  const originalUrl =
-    URL.createObjectURL(file);
+const originalUrl =
+URL.createObjectURL(file);
 
-  try {
+try {
 
-    const img = new Image();
+const img = new Image();  
 
-    await new Promise(function (resolve, reject) {
+await new Promise(function (resolve, reject) {  
 
-      img.onload = resolve;
+  img.onload = resolve;  
 
-      img.onerror = function () {
-        reject(
-          new Error('تعذر فتح الصورة.')
-        );
-      };
+  img.onerror = function () {  
+    reject(  
+      new Error('تعذر فتح الصورة.')  
+    );  
+  };  
 
-      img.src = originalUrl;
+  img.src = originalUrl;  
 
-    });
-
-
-    // أحجام الصورة التي سيتم تجربتها
-    const dimensions = [
-      900,
-      800,
-      700,
-      600
-    ];
-
-    // مستويات الضغط
-    const qualities = [
-      0.72,
-      0.62,
-      0.52,
-      0.42,
-      0.32
-    ];
-
-    // حجم الصورة الثنائية قبل Base64
-    // حتى تبقى داخل الحد الآمن لـ Firestore
-    const MAX_BLOB_SIZE = 250 * 1024;
+});  
 
 
-    for (const MAX_SIZE of dimensions) {
+// أحجام الصورة التي سيتم تجربتها  
+const dimensions = [  
+  900,  
+  800,  
+  700,  
+  600  
+];  
 
-      let width = img.naturalWidth;
-      let height = img.naturalHeight;
+// مستويات الضغط  
+const qualities = [  
+  0.72,  
+  0.62,  
+  0.52,  
+  0.42,  
+  0.32  
+];  
 
-
-      if (
-        width > MAX_SIZE ||
-        height > MAX_SIZE
-      ) {
-
-        if (width >= height) {
-
-          height = Math.round(
-            height * (MAX_SIZE / width)
-          );
-
-          width = MAX_SIZE;
-
-        } else {
-
-          width = Math.round(
-            width * (MAX_SIZE / height)
-          );
-
-          height = MAX_SIZE;
-
-        }
-
-      }
+// حجم الصورة الثنائية قبل Base64  
+// حتى تبقى داخل الحد الآمن لـ Firestore  
+const MAX_BLOB_SIZE = 250 * 1024;  
 
 
-      const canvas =
-        document.createElement('canvas');
+for (const MAX_SIZE of dimensions) {  
 
-      canvas.width = width;
-      canvas.height = height;
-
-
-      const ctx =
-        canvas.getContext('2d');
-
-      if (!ctx) {
-        throw new Error(
-          'تعذر تجهيز الصورة.'
-        );
-      }
+  let width = img.naturalWidth;  
+  let height = img.naturalHeight;  
 
 
-      // خلفية بيضاء للصور الشفافة
-      ctx.fillStyle = '#ffffff';
+  if (  
+    width > MAX_SIZE ||  
+    height > MAX_SIZE  
+  ) {  
 
-      ctx.fillRect(
-        0,
-        0,
-        width,
-        height
-      );
+    if (width >= height) {  
 
+      height = Math.round(  
+        height * (MAX_SIZE / width)  
+      );  
 
-      ctx.drawImage(
-        img,
-        0,
-        0,
-        width,
-        height
-      );
+      width = MAX_SIZE;  
 
+    } else {  
 
-      for (const quality of qualities) {
+      width = Math.round(  
+        width * (MAX_SIZE / height)  
+      );  
 
-        const blob =
-          await new Promise(function (resolve) {
+      height = MAX_SIZE;  
 
-            canvas.toBlob(
-              resolve,
-              'image/jpeg',
-              quality
-            );
+    }  
 
-          });
+  }  
 
 
-        if (!blob) {
-          continue;
-        }
+  const canvas =  
+    document.createElement('canvas');  
+
+  canvas.width = width;  
+  canvas.height = height;  
 
 
-        if (
-          blob.size <= MAX_BLOB_SIZE
-        ) {
+  const ctx =  
+    canvas.getContext('2d');  
 
-          const dataUrl =
-            await new Promise(
-              function (resolve, reject) {
-
-                const reader =
-                  new FileReader();
-
-                reader.onload = function () {
-                  resolve(reader.result);
-                };
-
-                reader.onerror = function () {
-                  reject(
-                    new Error(
-                      'تعذر قراءة الصورة.'
-                    )
-                  );
-                };
-
-                reader.readAsDataURL(blob);
-
-              }
-            );
+  if (!ctx) {  
+    throw new Error(  
+      'تعذر تجهيز الصورة.'  
+    );  
+  }  
 
 
-          return dataUrl;
+  // خلفية بيضاء للصور الشفافة  
+  ctx.fillStyle = '#ffffff';  
 
-        }
-
-      }
-
-    }
-
-
-    throw new Error(
-      'الصورة كبيرة جدًا. جرّب صورة أصغر.'
-    );
+  ctx.fillRect(  
+    0,  
+    0,  
+    width,  
+    height  
+  );  
 
 
-  } finally {
+  ctx.drawImage(  
+    img,  
+    0,  
+    0,  
+    width,  
+    height  
+  );  
 
-    URL.revokeObjectURL(
-      originalUrl
-    );
 
-  }
+  for (const quality of qualities) {  
+
+    const blob =  
+      await new Promise(function (resolve) {  
+
+        canvas.toBlob(  
+          resolve,  
+          'image/jpeg',  
+          quality  
+        );  
+
+      });  
+
+
+    if (!blob) {  
+      continue;  
+    }  
+
+
+    if (  
+      blob.size <= MAX_BLOB_SIZE  
+    ) {  
+
+      const dataUrl =  
+        await new Promise(  
+          function (resolve, reject) {  
+
+            const reader =  
+              new FileReader();  
+
+            reader.onload = function () {  
+              resolve(reader.result);  
+            };  
+
+            reader.onerror = function () {  
+              reject(  
+                new Error(  
+                  'تعذر قراءة الصورة.'  
+                )  
+              );  
+            };  
+
+            reader.readAsDataURL(blob);  
+
+          }  
+        );  
+
+
+      return dataUrl;  
+
+    }  
+
+  }  
+
+}  
+
+
+throw new Error(  
+  'الصورة كبيرة جدًا. جرّب صورة أصغر.'  
+);
+
+} finally {
+
+URL.revokeObjectURL(  
+  originalUrl  
+);
 
 }
 
-
+}
 // ======================================================
 // اختيار صورة من الجهاز
 // ======================================================
@@ -281,55 +276,54 @@ const imageFileInput = $('imageFile');
 
 if (imageFileInput) {
 
-  imageFileInput.addEventListener('change', async () => {
+imageFileInput.addEventListener('change', async () => {
 
-    const file = imageFileInput.files?.[0];
+const file = imageFileInput.files?.[0];  
 
-    if (!file) return;
+if (!file) return;  
 
-    if (!file.type.startsWith('image/')) {
+if (!file.type.startsWith('image/')) {  
 
-      alert('الرجاء اختيار صورة فقط.');
+  alert('الرجاء اختيار صورة فقط.');  
 
-      imageFileInput.value = '';
+  imageFileInput.value = '';  
 
-      return;
-    }
+  return;  
+}  
 
-    try {
+try {  
 
-      showMessage('جاري تجهيز الصورة...');
+  showMessage('جاري تجهيز الصورة...');  
 
-      selectedImageData =
-        await compressImage(file);
+  selectedImageData =  
+    await compressImage(file);  
 
-      removeExistingImage = false;
+  removeExistingImage = false;  
 
-      showImagePreview(selectedImageData);
+  showImagePreview(selectedImageData);  
 
-      showMessage(
-        'تم تجهيز الصورة، اضغط حفظ المنشور.',
-        true
-      );
+  showMessage(  
+    'تم تجهيز الصورة، اضغط حفظ المنشور.',  
+    true  
+  );  
 
-    } catch (e) {
+} catch (e) {  
 
-      console.error(e);
+  console.error(e);  
 
-      selectedImageData = null;
+  selectedImageData = null;  
 
-      imageFileInput.value = '';
+  imageFileInput.value = '';  
 
-      alert(
-        'تعذر تجهيز الصورة. جرّب صورة أصغر.'
-      );
-
-    }
-
-  });
+  alert(  
+    'تعذر تجهيز الصورة. جرّب صورة أصغر.'  
+  );  
 
 }
 
+});
+
+}
 
 // ======================================================
 // إزالة الصورة
@@ -339,39 +333,38 @@ const removeImageButton = $('removeImage');
 
 if (removeImageButton) {
 
-  removeImageButton.addEventListener('click', () => {
+removeImageButton.addEventListener('click', () => {
 
-    selectedImageData = null;
+selectedImageData = null;  
 
-    removeExistingImage = true;
+removeExistingImage = true;  
 
-    const input = $('imageFile');
+const input = $('imageFile');  
 
-    if (input) {
-      input.value = '';
-    }
+if (input) {  
+  input.value = '';  
+}  
 
-    const preview = $('imagePreview');
+const preview = $('imagePreview');  
 
-    if (preview) {
-      preview.hidden = true;
-    }
+if (preview) {  
+  preview.hidden = true;  
+}  
 
-    const previewImg = $('imagePreviewImg');
+const previewImg = $('imagePreviewImg');  
 
-    if (previewImg) {
-      previewImg.removeAttribute('src');
-    }
+if (previewImg) {  
+  previewImg.removeAttribute('src');  
+}  
 
-    showMessage(
-      'تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.',
-      true
-    );
+showMessage(  
+  'تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.',  
+  true  
+);
 
-  });
+});
 
 }
-
 
 // ======================================================
 // الرسائل والنموذج
@@ -379,47 +372,46 @@ if (removeImageButton) {
 
 function showMessage(text, ok = false){
 
-  const el = $('formMessage');
+const el = $('formMessage');
 
-  if (!el) return;
+if (!el) return;
 
-  el.textContent = text;
+el.textContent = text;
 
-  el.className =
-    'form-message ' +
-    (ok ? 'success' : 'error');
+el.className =
+'form-message ' +
+(ok ? 'success' : 'error');
 }
 
 function resetForm(){
 
-  $('postForm').reset();
+$('postForm').reset();
 
-  $('editingId').value = '';
+$('editingId').value = '';
 
-  $('formTitle').textContent =
-    'إضافة منشور جديد';
+$('formTitle').textContent =
+'إضافة منشور جديد';
 
-  $('saveBtn').textContent =
-    'حفظ المنشور';
+$('saveBtn').textContent =
+'حفظ المنشور';
 
-  $('cancelEdit').hidden = true;
+$('cancelEdit').hidden = true;
 
-  $('eventDateWrap').hidden =
-    $('category').value !== 'events';
+$('eventDateWrap').hidden =
+$('category').value !== 'events';
 
-  clearImageState();
+clearImageState();
 
-  showMessage('');
+showMessage('');
 }
 
 function dateText(d){
 
-  return d?.toDate
-    ? d.toDate().toLocaleString('ar-IQ')
-    : d || '';
+return d?.toDate
+? d.toDate().toLocaleString('ar-IQ')
+: d || '';
 
 }
-
 
 // ======================================================
 // المنشورات
@@ -427,147 +419,147 @@ function dateText(d){
 
 function postItem(doc){
 
-  const d = doc.data();
+const d = doc.data();
 
-  const key =
-    d.category || 'news';
+const key =
+d.category || 'news';
 
-  const cfg =
-    ADMIN_CATEGORIES[key] ||
-    ADMIN_CATEGORIES.news;
+const cfg =
+ADMIN_CATEGORIES[key] ||
+ADMIN_CATEGORIES.news;
 
-  const image =
-    d.imageData ||
-    d.imageUrl ||
-    '';
+const image =
+d.imageData ||
+d.imageUrl ||
+'';
 
-  return `
-    <div class="admin-post">
+return `
+<div class="admin-post">
 
-      <div>
+<div>  
 
-        ${image ? `
-          <img
-            src="${esc(image)}"
-            alt=""
-            loading="lazy"
-            style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;"
-          >
-        ` : ''}
+    ${image ? `  
+      <img  
+        src="${esc(image)}"  
+        alt=""  
+        loading="lazy"  
+        style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;"  
+      >  
+    ` : ''}  
 
-        <div class="post-meta">
+    <div class="post-meta">  
 
-          ${cfg.icon} ${cfg.title}
+      ${cfg.icon} ${cfg.title}  
 
-          ${d.createdAt
-            ? '• ' + esc(dateText(d.createdAt))
-            : ''}
+      ${d.createdAt  
+        ? '• ' + esc(dateText(d.createdAt))  
+        : ''}  
 
-        </div>
+    </div>  
 
-        <h4>
-          ${esc(d.title || 'بدون عنوان')}
-        </h4>
+    <h4>  
+      ${esc(d.title || 'بدون عنوان')}  
+    </h4>  
 
-        <p>
-          ${esc(d.content || '')}
-        </p>
+    <p>  
+      ${esc(d.content || '')}  
+    </p>  
 
-      </div>
+  </div>  
 
-      <div class="admin-post-actions">
+  <div class="admin-post-actions">  
 
-        <button
-          type="button"
-          class="btn mini edit-post"
-          data-id="${doc.id}"
-          data-category="${key}"
-        >
-          تعديل
-        </button>
+    <button  
+      type="button"  
+      class="btn mini edit-post"  
+      data-id="${doc.id}"  
+      data-category="${key}"  
+    >  
+      تعديل  
+    </button>  
 
-        <button
-          type="button"
-          class="btn mini danger delete-post"
-          data-id="${doc.id}"
-          data-category="${key}"
-        >
-          حذف
-        </button>
+    <button  
+      type="button"  
+      class="btn mini danger delete-post"  
+      data-id="${doc.id}"  
+      data-category="${key}"  
+    >  
+      حذف  
+    </button>  
 
-      </div>
+  </div>  
 
-    </div>
-  `;
+</div>
+
+`;
 }
 
 async function loadPosts(){
 
-  const box = $('postsList');
+const box = $('postsList');
 
-  const filter =
-    $('filterCategory').value;
+const filter =
+$('filterCategory').value;
 
-  box.innerHTML =
-    '<div class="empty-state">جاري التحميل...</div>';
+box.innerHTML =
+'<div class="empty-state">جاري التحميل...</div>';
 
-  try {
+try {
 
-    let all = [];
+let all = [];  
 
-    const keys =
-      (
-        filter === 'all'
-          ? Object.keys(ADMIN_CATEGORIES)
-          : [filter]
-      ).filter(canManage);
+const keys =  
+  (  
+    filter === 'all'  
+      ? Object.keys(ADMIN_CATEGORIES)  
+      : [filter]  
+  ).filter(canManage);  
 
-    for (const key of keys) {
+for (const key of keys) {  
 
-      const snap =
-        await db
-          .collection(
-            ADMIN_CATEGORIES[key].collection
-          )
-          .orderBy('createdAt', 'desc')
-          .get();
+  const snap =  
+    await db  
+      .collection(  
+        ADMIN_CATEGORIES[key].collection  
+      )  
+      .orderBy('createdAt', 'desc')  
+      .get();  
 
-      snap.forEach(doc => {
+  snap.forEach(doc => {  
 
-        all.push({
-          doc,
-          key
-        });
+    all.push({  
+      doc,  
+      key  
+    });  
 
-      });
+  });  
 
-    }
+}  
 
-    all.sort((a, b) =>
-      (
-        b.doc.data().createdAt?.toMillis?.() || 0
-      ) -
-      (
-        a.doc.data().createdAt?.toMillis?.() || 0
-      )
-    );
+all.sort((a, b) =>  
+  (  
+    b.doc.data().createdAt?.toMillis?.() || 0  
+  ) -  
+  (  
+    a.doc.data().createdAt?.toMillis?.() || 0  
+  )  
+);  
 
-    box.innerHTML =
-      all.length
-        ? all.map(x => postItem(x.doc)).join('')
-        : '<div class="empty-state">لا توجد منشورات حاليًا</div>';
+box.innerHTML =  
+  all.length  
+    ? all.map(x => postItem(x.doc)).join('')  
+    : '<div class="empty-state">لا توجد منشورات حاليًا</div>';
 
-  } catch (e) {
+} catch (e) {
 
-    console.error(e);
+console.error(e);  
 
-    box.innerHTML =
-      '<div class="empty-state">تعذر تحميل المنشورات.</div>';
-
-  }
+box.innerHTML =  
+  '<div class="empty-state">تعذر تحميل المنشورات.</div>';
 
 }
 
+}
 
 // ======================================================
 // تعديل منشور
@@ -575,96 +567,95 @@ async function loadPosts(){
 
 async function loadForEdit(id, key){
 
-  try {
+try {
 
-    const snap =
-      await db
-        .collection(
-          ADMIN_CATEGORIES[key].collection
-        )
-        .doc(id)
-        .get();
+const snap =  
+  await db  
+    .collection(  
+      ADMIN_CATEGORIES[key].collection  
+    )  
+    .doc(id)  
+    .get();  
 
-    if (!snap.exists) return;
+if (!snap.exists) return;  
 
-    const d =
-      snap.data();
+const d =  
+  snap.data();  
 
-    $('editingId').value =
-      id;
+$('editingId').value =  
+  id;  
 
-    $('category').value =
-      key;
+$('category').value =  
+  key;  
 
-    $('title').value =
-      d.title || '';
+$('title').value =  
+  d.title || '';  
 
-    $('content').value =
-      d.content || '';
+$('content').value =  
+  d.content || '';  
 
-    $('eventDate').value =
-      d.eventDate || '';
+$('eventDate').value =  
+  d.eventDate || '';  
 
-    $('eventDateWrap').hidden =
-      key !== 'events';
+$('eventDateWrap').hidden =  
+  key !== 'events';  
 
-    $('formTitle').textContent =
-      'تعديل المنشور';
+$('formTitle').textContent =  
+  'تعديل المنشور';  
 
-    $('saveBtn').textContent =
-      'حفظ التعديلات';
+$('saveBtn').textContent =  
+  'حفظ التعديلات';  
 
-    $('cancelEdit').hidden =
-      false;
+$('cancelEdit').hidden =  
+  false;  
 
-    selectedImageData =
-      null;
+selectedImageData =  
+  null;  
 
-    removeExistingImage =
-      false;
+removeExistingImage =  
+  false;  
 
-    const existingImage =
-      d.imageData ||
-      d.imageUrl ||
-      '';
+const existingImage =  
+  d.imageData ||  
+  d.imageUrl ||  
+  '';  
 
-    if (existingImage) {
+if (existingImage) {  
 
-      showImagePreview(
-        existingImage
-      );
+  showImagePreview(  
+    existingImage  
+  );  
 
-    } else {
+} else {  
 
-      const preview =
-        $('imagePreview');
+  const preview =  
+    $('imagePreview');  
 
-      if (preview) {
-        preview.hidden = true;
-      }
+  if (preview) {  
+    preview.hidden = true;  
+  }  
 
-    }
+}  
 
-    window.scrollTo({
-      top:
-        document.querySelector(
-          '.admin-section'
-        ).offsetTop - 90,
-      behavior: 'smooth'
-    });
+window.scrollTo({  
+  top:  
+    document.querySelector(  
+      '.admin-section'  
+    ).offsetTop - 90,  
+  behavior: 'smooth'  
+});
 
-  } catch (e) {
+} catch (e) {
 
-    console.error(e);
+console.error(e);  
 
-    alert(
-      'تعذر فتح المنشور للتعديل.'
-    );
-
-  }
+alert(  
+  'تعذر فتح المنشور للتعديل.'  
+);
 
 }
 
+}
 
 // ======================================================
 // حذف منشور
@@ -672,37 +663,36 @@ async function loadForEdit(id, key){
 
 async function deletePost(id, key){
 
-  if (
-    !confirm(
-      'هل أنت متأكد من حذف هذا المنشور؟'
-    )
-  ) {
-    return;
-  }
+if (
+!confirm(
+'هل أنت متأكد من حذف هذا المنشور؟'
+)
+) {
+return;
+}
 
-  try {
+try {
 
-    await db
-      .collection(
-        ADMIN_CATEGORIES[key].collection
-      )
-      .doc(id)
-      .delete();
+await db  
+  .collection(  
+    ADMIN_CATEGORIES[key].collection  
+  )  
+  .doc(id)  
+  .delete();  
 
-    await loadPosts();
+await loadPosts();
 
-  } catch (e) {
+} catch (e) {
 
-    console.error(e);
+console.error(e);  
 
-    alert(
-      'تعذر حذف المنشور.'
-    );
-
-  }
+alert(  
+  'تعذر حذف المنشور.'  
+);
 
 }
 
+}
 
 // ======================================================
 // الاستفسارات
@@ -710,908 +700,564 @@ async function deletePost(id, key){
 
 async function loadInquiries(){
 
-  const box =
-    $('inquiriesList');
+const box =
+$('inquiriesList');
 
-  box.innerHTML =
-    '<div class="empty-state">جاري تحميل الاستفسارات...</div>';
+box.innerHTML =
+'<div class="empty-state">جاري تحميل الاستفسارات...</div>';
 
-  try {
+try {
 
-    const snap =
-      await db
-        .collection('inquiries')
-        .get();
+const snap =  
+  await db  
+    .collection('inquiries')  
+    .get();  
 
-    const rows =
-      snap.docs.sort((a, b) =>
-        (
-          b.data().createdAt?.toMillis?.() || 0
-        ) -
-        (
-          a.data().createdAt?.toMillis?.() || 0
-        )
-      );
+const rows =  
+  snap.docs.sort((a, b) =>  
+    (  
+      b.data().createdAt?.toMillis?.() || 0  
+    ) -  
+    (  
+      a.data().createdAt?.toMillis?.() || 0  
+    )  
+  );  
 
-    if (!rows.length) {
+if (!rows.length) {  
 
-      box.innerHTML =
-        '<div class="empty-state">لا توجد استفسارات حاليًا.</div>';
+  box.innerHTML =  
+    '<div class="empty-state">لا توجد استفسارات حاليًا.</div>';  
 
-      return;
-    }
+  return;  
+}  
 
-    const unseen =
-      rows.filter(doc =>
-        doc.data().adminSeen !== true &&
-        doc.data().status === 'new'
-      );
+const unseen =  
+  rows.filter(doc =>  
+    doc.data().adminSeen !== true &&  
+    doc.data().status === 'new'  
+  );  
 
-    if (unseen.length) {
+if (unseen.length) {  
 
-      await Promise.all(
-        unseen.map(doc =>
-          db
-            .collection('inquiries')
-            .doc(doc.id)
-            .update({
-              adminSeen: true
-            })
-        )
-      );
+  await Promise.all(  
+    unseen.map(doc =>  
+      db  
+        .collection('inquiries')  
+        .doc(doc.id)  
+        .update({  
+          adminSeen: true  
+        })  
+    )  
+  );  
 
-    }
+}  
 
-    const users = {};
+const users = {};  
 
-    for (const doc of rows) {
+for (const doc of rows) {  
 
-      const uid =
-        doc.data().userId;
+  const uid =  
+    doc.data().userId;  
 
-      if (uid && !users[uid]) {
+  if (uid && !users[uid]) {  
 
-        const u =
-          await db
-            .collection('users')
-            .doc(uid)
-            .get();
+    const u =  
+      await db  
+        .collection('users')  
+        .doc(uid)  
+        .get();  
 
-        users[uid] =
-          u.exists
-            ? u.data()
-            : {};
+    users[uid] =  
+      u.exists  
+        ? u.data()  
+        : {};  
 
-      }
+  }  
 
-    }
+}  
 
-    box.innerHTML =
-      rows.map(doc => {
+box.innerHTML =  
+  rows.map(doc => {  
 
-        const d =
-          doc.data();
+    const d =  
+      doc.data();  
 
-        const u =
-          users[d.userId] || {};
+    const u =  
+      users[d.userId] || {};  
 
-        return `
-          <article
-            class="admin-inquiry"
-            data-inquiry-id="${doc.id}"
-          >
+    return `  
+      <article  
+        class="admin-inquiry"  
+        data-inquiry-id="${doc.id}"  
+      >  
 
-            <div>
+        <div>  
 
-              <div class="post-meta">
+          <div class="post-meta">  
 
-                ${esc(d.type)}
+            ${esc(d.type)}  
 
-                ${
-                  d.createdAt
-                    ? '• ' +
-                      esc(dateText(d.createdAt))
-                    : ''
-                }
+            ${  
+              d.createdAt  
+                ? '• ' +  
+                  esc(dateText(d.createdAt))  
+                : ''  
+            }  
 
-              </div>
+          </div>  
 
-              <h4>
-                ${esc(d.title)}
-              </h4>
+          <h4>  
+            ${esc(d.title)}  
+          </h4>  
 
-              <p>
-                ${esc(d.message)}
-              </p>
+          <p>  
+            ${esc(d.message)}  
+          </p>  
 
-              <small>
-                المستخدم:
-                ${esc(u.fullName || 'عضو')}
-                —
-                ${esc(u.email || '')}
-              </small>
+          <small>  
+            المستخدم:  
+            ${esc(u.fullName || 'عضو')}  
+            —  
+            ${esc(u.email || '')}  
+          </small>  
 
-              ${
-                d.reply
-                  ? `
-                    <div class="inquiry-reply">
+          ${  
+            d.reply  
+              ? `  
+                <div class="inquiry-reply">  
 
-                      <strong>
-                        الرد الحالي
-                      </strong>
+                  <strong>  
+                    الرد الحالي  
+                  </strong>  
 
-                      <p>
-                        ${esc(d.reply)}
-                      </p>
+                  <p>  
+                    ${esc(d.reply)}  
+                  </p>  
 
-                    </div>
-                  `
-                  : ''
-              }
+                </div>  
+              `  
+              : ''  
+          }  
 
-            </div>
+        </div>  
 
-            <div class="inquiry-actions">
+        <div class="inquiry-actions">  
 
-              <textarea
-                class="reply-input"
-                rows="4"
-                placeholder="اكتب رد الفريق..."
-              >${esc(d.reply || '')}</textarea>
+          <textarea  
+            class="reply-input"  
+            rows="4"  
+            placeholder="اكتب رد الفريق..."  
+          >${esc(d.reply || '')}</textarea>  
 
-              <button
-                class="btn primary reply-inquiry"
-                data-id="${doc.id}"
-              >
-                ${
-                  d.reply
-                    ? 'تحديث الرد'
-                    : 'إرسال الرد'
-                }
-              </button>
+          <button  
+            class="btn primary reply-inquiry"  
+            data-id="${doc.id}"  
+          >  
+            ${  
+              d.reply  
+                ? 'تحديث الرد'  
+                : 'إرسال الرد'  
+            }  
+          </button>  
 
-              <button
-                class="btn mini danger delete-inquiry"
-                data-id="${doc.id}"
-              >
-                حذف
-              </button>
+          <button  
+            class="btn mini danger delete-inquiry"  
+            data-id="${doc.id}"  
+          >  
+            حذف  
+          </button>  
 
-            </div>
+        </div>  
 
-          </article>
-        `;
+      </article>  
+    `;  
 
-      }).join('');
+  }).join('');
 
-  } catch (e) {
+} catch (e) {
 
-    console.error(e);
+console.error(e);  
 
-    box.innerHTML =
-      '<div class="empty-state">تعذر تحميل الاستفسارات.</div>';
-
-  }
+box.innerHTML =  
+  '<div class="empty-state">تعذر تحميل الاستفسارات.</div>';
 
 }
 
+}
 
 // ======================================================
 // الأحداث
 // ======================================================
 
 $('category').addEventListener(
-  'change',
-  () => {
+'change',
+() => {
 
-    $('eventDateWrap').hidden =
-      $('category').value !== 'events';
+$('eventDateWrap').hidden =  
+  $('category').value !== 'events';
 
-  }
+}
 );
 
 $('filterCategory').addEventListener(
-  'change',
-  loadPosts
+'change',
+loadPosts
 );
 
 $('cancelEdit').addEventListener(
-  'click',
-  resetForm
+'click',
+resetForm
 );
 
 $('refreshInquiries').addEventListener(
-  'click',
-  loadInquiries
+'click',
+loadInquiries
 );
-
 
 // ======================================================
 // أزرار المنشورات
 // ======================================================
 
 $('postsList').addEventListener(
-  'click',
-  e => {
+'click',
+e => {
 
-    const edit =
-      e.target.closest('.edit-post');
+const edit =  
+  e.target.closest('.edit-post');  
 
-    const del =
-      e.target.closest('.delete-post');
+const del =  
+  e.target.closest('.delete-post');  
 
-    if (edit) {
-      loadForEdit(
-        edit.dataset.id,
-        edit.dataset.category
-      );
-    }
+if (edit) {  
+  loadForEdit(  
+    edit.dataset.id,  
+    edit.dataset.category  
+  );  
+}  
 
-    if (del) {
-      deletePost(
-        del.dataset.id,
-        del.dataset.category
-      );
-    }
+if (del) {  
+  deletePost(  
+    del.dataset.id,  
+    del.dataset.category  
+  );  
+}
 
-  }
+}
 );
-
 
 // ======================================================
 // الاستفسارات - رد وحذف
 // ======================================================
 
 $('inquiriesList').addEventListener(
-  'click',
-  async e => {
+'click',
+async e => {
 
-    const reply =
-      e.target.closest('.reply-inquiry');
+const reply =  
+  e.target.closest('.reply-inquiry');  
 
-    const del =
-      e.target.closest('.delete-inquiry');
+const del =  
+  e.target.closest('.delete-inquiry');  
 
-    if (reply) {
+if (reply) {  
 
-      const card =
-        reply.closest('.admin-inquiry');
+  const card =  
+    reply.closest('.admin-inquiry');  
 
-      const text =
-        card
-          .querySelector('.reply-input')
-          .value
-          .trim();
+  const text =  
+    card  
+      .querySelector('.reply-input')  
+      .value  
+      .trim();  
 
-      if (!text) {
+  if (!text) {  
 
-        alert('اكتب الرد أولًا.');
+    alert('اكتب الرد أولًا.');  
 
-        return;
-      }
+    return;  
+  }  
 
-      reply.disabled = true;
+  reply.disabled = true;  
 
-      try {
+  try {  
 
-        await db
-          .collection('inquiries')
-          .doc(reply.dataset.id)
-          .update({
-            reply: text,
-            repliedAt:
-              firebase.firestore.FieldValue
-                .serverTimestamp(),
-            status: 'replied'
-          });
+    await db  
+      .collection('inquiries')  
+      .doc(reply.dataset.id)  
+      .update({  
+        reply: text,  
+        repliedAt:  
+          firebase.firestore.FieldValue  
+            .serverTimestamp(),  
+        status: 'replied'  
+      });  
 
-        await loadInquiries();
+    await loadInquiries();  
 
-      } catch (err) {
+  } catch (err) {  
 
-        console.error(err);
+    console.error(err);  
 
-        alert(
-          'تعذر حفظ الرد.'
-        );
+    alert(  
+      'تعذر حفظ الرد.'  
+    );  
 
-      } finally {
+  } finally {  
 
-        reply.disabled = false;
+    reply.disabled = false;  
 
-      }
+  }  
 
-    }
+}  
 
-    if (del) {
+if (del) {  
 
-      if (
-        !confirm(
-          'حذف الاستفسار نهائيًا؟'
-        )
-      ) {
-        return;
-      }
+  if (  
+    !confirm(  
+      'حذف الاستفسار نهائيًا؟'  
+    )  
+  ) {  
+    return;  
+  }  
 
-      try {
+  try {  
 
-        await db
-          .collection('inquiries')
-          .doc(del.dataset.id)
-          .delete();
+    await db  
+      .collection('inquiries')  
+      .doc(del.dataset.id)  
+      .delete();  
 
-        await loadInquiries();
+    await loadInquiries();  
 
-      } catch (err) {
+  } catch (err) {  
 
-        console.error(err);
+    console.error(err);  
 
-        alert(
-          'تعذر حذف الاستفسار.'
-        );
+    alert(  
+      'تعذر حذف الاستفسار.'  
+    );  
 
-      }
+  }  
 
-    }
+}
 
-  }
+}
 );
-
 
 // ======================================================
 // حفظ المنشور
 // ======================================================
 
 $('postForm').addEventListener(
-  'submit',
-  async e => {
+'submit',
+async e => {
 
-    e.preventDefault();
+e.preventDefault();  
 
-    showMessage(
-      'جاري الحفظ...'
-    );
+showMessage(  
+  'جاري الحفظ...'  
+);  
 
-    const key =
-      $('category').value;
+const key =  
+  $('category').value;  
 
-    const cfg =
-      ADMIN_CATEGORIES[key];
+const cfg =  
+  ADMIN_CATEGORIES[key];  
 
-    const id =
-      $('editingId').value.trim();
+const id =  
+  $('editingId').value.trim();  
 
-    if (!canManage(key)) {
+if (!canManage(key)) {  
 
-      showMessage(
-        'ليست لديك صلاحية لإدارة هذا القسم.'
-      );
+  showMessage(  
+    'ليست لديك صلاحية لإدارة هذا القسم.'  
+  );  
 
-      return;
-    }
+  return;  
+}  
 
-    const data = {
+const data = {  
 
-      title:
-        $('title').value.trim(),
+  title:  
+    $('title').value.trim(),  
 
-      content:
-        $('content').value.trim(),
+  content:  
+    $('content').value.trim(),  
 
-      category:
-        key,
+  category:  
+    key,  
 
-      updatedAt:
-        firebase.firestore.FieldValue
-          .serverTimestamp()
+  updatedAt:  
+    firebase.firestore.FieldValue  
+      .serverTimestamp()  
 
-    };
+};  
 
-    if (
-      key === 'events' &&
-      $('eventDate').value
-    ) {
+if (  
+  key === 'events' &&  
+  $('eventDate').value  
+) {  
 
-      data.eventDate =
-        $('eventDate').value;
+  data.eventDate =  
+    $('eventDate').value;  
 
-    } else if (key === 'events') {
+} else if (key === 'events') {  
 
-      data.eventDate = '';
+  data.eventDate = '';  
 
-    }
+}  
 
-    try {
+try {  
 
-      console.error(
-        'SAVE POST ERROR:',
-        err
-      );
+  // صورة جديدة  
+  if (selectedImageData) {  
 
-      const code =
-        err?.code || '';
+    data.imageData =  
+      selectedImageData;  
 
-      const message =
-        String(
-          err?.message || ''
-        );
+    data.imageUrl =  
+      firebase.firestore.FieldValue  
+        .delete();  
 
-      if (
-        code === 'resource-exhausted' ||
-        message
-          .toLowerCase()
-          .includes('1 mib') ||
-        message
-          .toLowerCase()
-          .includes('maximum')
-      ) {
+  }  
 
-        showMessage(
-          'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'
-        );
+  // إزالة الصورة  
+  else if (  
+    id &&  
+    removeExistingImage  
+  ) {  
 
-      } else if (
-        code === 'permission-denied'
-      ) {
+    data.imageData =  
+      firebase.firestore.FieldValue  
+        .delete();  
 
-        showMessage(
-          'لا توجد صلاحية لحفظ المنشور في هذا القسم.'
-        );
+    data.imageUrl =  
+      firebase.firestore.FieldValue  
+        .delete();  
 
-      } else if (
-        code === 'failed-precondition'
-      ) {
+  }  
 
-        showMessage(
-          'يوجد إعداد ناقص في Firestore.'
-        );
+  // منشور جديد أو تعديل  
+  if (id) {  
 
-      } else {
+    await db  
+      .collection(cfg.collection)  
+      .doc(id)  
+      .update(data);  
 
-        showMessage(
-          'خطأ الحفظ: ' +
-          (
-            message ||
-            code ||
-            'خطأ غير معروف'
-          )
-        );
+  } else {  
 
-      }
+    data.createdAt =  
+      firebase.firestore.FieldValue  
+        .serverTimestamp();  
 
-      alert(
-        'خطأ الحفظ الحقيقي:\n\n' +
-        (
-          message ||
-          code ||
-          'خطأ غير معروف'
-        )
-      );
+    data.authorId =  
+      currentUser.uid;  
 
-    }
+    await db  
+      .collection(cfg.collection)  
+      .add(data);  
 
-  }
-);
+  }  
 
+  showMessage(  
+    id  
+      ? 'تم تعديل المنشور بنجاح.'  
+      : 'تمت إضافة المنشور بنجاح.',  
+    true  
+  );  
 
-// ======================================================
-// تسجيل الخروج - يرجع للرئيسية
-// ======================================================
+  resetForm();  
 
-$('logoutBtn').addEventListener(
-  'click',
-  async () => {
+  await loadPosts();  
 
-    await auth.signOut();
+} catch (err) {
 
-    location.href =
-      'index.html';
-
-  }
-);
-
-
-// ======================================================
-// إشعارات الإدارة
-// ======================================================
-
-function updateAdminNotificationBadge(count){
-
-  const b =
-    document.getElementById(
-      'adminNotificationBadge'
-    );
-
-  if (!b) return;
-
-  b.textContent =
-    count > 0
-      ? '🔔 ' + count + ' استفسار جديد'
-      : '🔔 لا توجد استفسارات جديدة';
-
-  b.classList.toggle(
-    'has-alert',
-    count > 0
-  );
-
-}
-
-
-// ======================================================
-// التحقق من الحساب والصلاحيات
-// ======================================================
-
-auth.onAuthStateChanged(
-  async user => {
-
-    console.log(
-      'ADMIN AUTH CHECK:',
-      user
-        ? user.uid
-        : 'NO USER'
-    );
-
-    if (!user) {
-
-      location.href =
-        'login.html?next=admin.html';
-
-      return;
-    }
-
-    currentUser =
-      user;
-
-    try {
-
-      console.log(
-        'ADMIN: جاري قراءة بيانات المستخدم...'
-      );
-
-      const doc =
-        await db
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      console.log(
-        'ADMIN USER DOC:',
-        doc.exists
-          ? doc.data()
-          : 'DOCUMENT NOT FOUND'
-      );
-
-      if (!doc.exists) {
-
-        $('adminGate').innerHTML =
-          'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
-          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
-
-        return;
-      }
-
-      const userData =
-        doc.data();
-
-      const role =
-        String(
-          userData.role || 'user'
-        )
-          .trim()
-          .toLowerCase();
-
-      console.log(
-        'ADMIN ROLE:',
-        role
-      );
-
-      if (
-        !['admin', 'supervisor']
-          .includes(role)
-      ) {
-
-        $('adminGate').innerHTML =
-          'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
-          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
-
-        return;
-      }
-
-      currentUserRole =
-        role;
-
-      currentPermissions =
-        Array.isArray(
-          userData.permissions
-        )
-          ? userData.permissions
-          : [];
-
-      $('adminGate').hidden =
-        true;
-
-      $('adminApp').hidden =
-        false;
-
-      $('adminEmail').textContent =
-        'المشرف: ' +
-        (user.email || '') +
-        ' — ' +
-        (
-          currentUserRole === 'admin'
-            ? 'مدير كامل'
-            : 'مشرف متخصص'
-        );
-
-
-      // المشرف المتخصص
-      if (
-        currentUserRole !== 'admin'
-      ) {
-
-        $('filterCategory')
-          .querySelectorAll('option')
-          .forEach(o => {
-
-            if (
-              o.value !== 'all' &&
-              !canManage(o.value)
-            ) {
-
-              o.hidden =
-                true;
-
-            }
-
-          });
-
-        $('category')
-          .querySelectorAll('option')
-          .forEach(o => {
-
-            if (
-              !canManage(o.value)
-            ) {
-
-              o.remove();
-
-            }
-
-          });
-
-        $('supervisorsCard').hidden =
-          true;
-
-        const inquiriesCard =
-          $('inquiriesList')
-            .closest(
-              '.admin-wide-card'
-            );
-
-        if (inquiriesCard) {
-
-          inquiriesCard.hidden =
-            !canManage(
-              'inquiries'
-            );
-
-        }
-
-        const canManagePosts =
-          Object.keys(
-            ADMIN_CATEGORIES
-          ).some(
-            canManage
-          );
-
-        $('postForm').hidden =
-          !canManagePosts;
-
-        const postsCard =
-          $('postsList')
-            .closest(
-              '.admin-card'
-            );
-
-        if (postsCard) {
-
-          postsCard.hidden =
-            !canManagePosts;
-
-        }
-
-      }
-
-
-      console.log(
-        'ADMIN: جاري تحميل المنشورات...'
-      );
-
-      await loadPosts();
-
-      console.log(
-        'ADMIN: تم تحميل المنشورات.'
-      );
-
-
-      if (
-        canManage('inquiries')
-      ) {
-
-        await loadInquiries();
-
-        if (
-          window.WasitNotifications
-        ) {
-
-          stopAdminNotifications =
-            WasitNotifications
-              .listenAdminInquiries(
-                user,
-                updateAdminNotificationBadge
-              );
-
-        }
-
-      }
-
-
-      if (
-        typeof loadSupervisors ===
-        'function' &&
-        currentUserRole === 'admin'
-      ) {
-
-        await loadSupervisors();
-
-      }
-
-
-      if (
-        typeof refreshDashboard ===
-        'function'
-      ) {
-
-        await refreshDashboard();
-
-      }
-
-      console.log(
-        'ADMIN: تم فتح لوحة التحكم بنجاح.'
-      );
-
-    } catch (e) {
-
-      console.error(
-        'ADMIN ACCESS ERROR:',
-        e
-      );
-
-      $('adminGate').innerHTML =
-        'حدث خطأ أثناء التحقق من صلاح
-
-      // منشور جديد أو تعديل
-      if (id) {
-
-        await db
-          .collection(cfg.collection)
-          .doc(id)
-          .update(data);
-
-      } else {
-
-        data.createdAt =
-          firebase.firestore.FieldValue
-            .serverTimestamp();
-
-        data.authorId =
-          currentUser.uid;
-
-        await db
-          .collection(cfg.collection)
-          .add(data);
-
-      }
-
-      showMessage(
-        id
-          ? 'تم تعديل المنشور بنجاح.'
-          : 'تمت إضافة المنشور بنجاح.',
-        true
-      );
-
-      resetForm();
-
-      await loadPosts();
-
-    } catch (err) {
 console.error(
-        'SAVE POST ERROR:',
-        err
-      );
-
-      const code =
-        err?.code || '';
-
-      const message =
-        String(
-          err?.message || ''
-        );
-
-      if (
-        code === 'resource-exhausted' ||
-        message
-          .toLowerCase()
-          .includes('1 mib') ||
-        message
-          .toLowerCase()
-          .includes('maximum')
-      ) {
-
-        showMessage(
-          'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'
-        );
-
-      } else if (
-        code === 'permission-denied'
-      ) {
-
-        showMessage(
-          'لا توجد صلاحية لحفظ المنشور في هذا القسم.'
-        );
-
-      } else if (
-        code === 'failed-precondition'
-      ) {
-
-        showMessage(
-          'يوجد إعداد ناقص في Firestore.'
-        );
-
-      } else {
-
-        showMessage(
-          'خطأ الحفظ: ' +
-          (
-            message ||
-            code ||
-            'خطأ غير معروف'
-          )
-        );
-
-      }
-
-      alert(
-        'خطأ الحفظ الحقيقي:\n\n' +
-        (
-          message ||
-          code ||
-          'خطأ غير معروف'
-        )
-      );
-
-    }
-
-  }
+'SAVE POST ERROR:',
+err
 );
 
+const code =  
+    err?.code || '';  
+
+  const message =  
+    String(  
+      err?.message || ''  
+    );  
+
+  if (  
+    code === 'resource-exhausted' ||  
+    message  
+      .toLowerCase()  
+      .includes('1 mib') ||  
+    message  
+      .toLowerCase()  
+      .includes('maximum')  
+  ) {  
+
+    showMessage(  
+      'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'  
+    );  
+
+  } else if (  
+    code === 'permission-denied'  
+  ) {  
+
+    showMessage(  
+      'لا توجد صلاحية لحفظ المنشور في هذا القسم.'  
+    );  
+
+  } else if (  
+    code === 'failed-precondition'  
+  ) {  
+
+    showMessage(  
+      'يوجد إعداد ناقص في Firestore.'  
+    );  
+
+  } else {  
+
+    showMessage(  
+      'خطأ الحفظ: ' +  
+      (  
+        message ||  
+        code ||  
+        'خطأ غير معروف'  
+      )  
+    );  
+
+  }  
+
+  alert(  
+    'خطأ الحفظ الحقيقي:\n\n' +  
+    (  
+      message ||  
+      code ||  
+      'خطأ غير معروف'  
+    )  
+  );  
+
+}
+
+}
+);
 
 // ======================================================
 // تسجيل الخروج - يرجع للرئيسية
 // ======================================================
 
 $('logoutBtn').addEventListener(
-  'click',
-  async () => {
+'click',
+async () => {
 
-    await auth.signOut();
+await auth.signOut();  
 
-    location.href =
-      'index.html';
+location.href =  
+  'index.html';
 
-  }
+}
 );
-
 
 // ======================================================
 // إشعارات الإدارة
@@ -1619,287 +1265,286 @@ $('logoutBtn').addEventListener(
 
 function updateAdminNotificationBadge(count){
 
-  const b =
-    document.getElementById(
-      'adminNotificationBadge'
-    );
+const b =
+document.getElementById(
+'adminNotificationBadge'
+);
 
-  if (!b) return;
+if (!b) return;
 
-  b.textContent =
-    count > 0
-      ? '🔔 ' + count + ' استفسار جديد'
-      : '🔔 لا توجد استفسارات جديدة';
+b.textContent =
+count > 0
+? '🔔 ' + count + ' استفسار جديد'
+: '🔔 لا توجد استفسارات جديدة';
 
-  b.classList.toggle(
-    'has-alert',
-    count > 0
-  );
+b.classList.toggle(
+'has-alert',
+count > 0
+);
 
 }
-
 
 // ======================================================
 // التحقق من الحساب والصلاحيات
 // ======================================================
 
 auth.onAuthStateChanged(
-  async user => {
-
-    console.log(
-      'ADMIN AUTH CHECK:',
-      user
-        ? user.uid
-        : 'NO USER'
-    );
-
-    if (!user) {
-
-      location.href =
-        'login.html?next=admin.html';
-
-      return;
-    }
-
-    currentUser =
-      user;
-
-    try {
-
-      console.log(
-        'ADMIN: جاري قراءة بيانات المستخدم...'
-      );
-
-      const doc =
-        await db
-          .collection('users')
-          .doc(user.uid)
-          .get();
+async user => {
+
+console.log(  
+  'ADMIN AUTH CHECK:',  
+  user  
+    ? user.uid  
+    : 'NO USER'  
+);  
+
+if (!user) {  
+
+  location.href =  
+    'login.html?next=admin.html';  
+
+  return;  
+}  
+
+currentUser =  
+  user;  
+
+try {  
+
+  console.log(  
+    'ADMIN: جاري قراءة بيانات المستخدم...'  
+  );  
+
+  const doc =  
+    await db  
+      .collection('users')  
+      .doc(user.uid)  
+      .get();  
 
-      console.log(
-        'ADMIN USER DOC:',
-        doc.exists
-          ? doc.data()
-          : 'DOCUMENT NOT FOUND'
-      );
+  console.log(  
+    'ADMIN USER DOC:',  
+    doc.exists  
+      ? doc.data()  
+      : 'DOCUMENT NOT FOUND'  
+  );  
 
-      if (!doc.exists) {
+  if (!doc.exists) {  
 
-        $('adminGate').innerHTML =
-          'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
-          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+    $('adminGate').innerHTML =  
+      'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +  
+      '<a class="btn primary" href="index.html">العودة للرئيسية</a>';  
 
-        return;
-      }
+    return;  
+  }  
 
-      const userData =
-        doc.data();
+  const userData =  
+    doc.data();  
 
-      const role =
-        String(
-          userData.role || 'user'
-        )
-          .trim()
-          .toLowerCase();
+  const role =  
+    String(  
+      userData.role || 'user'  
+    )  
+      .trim()  
+      .toLowerCase();  
 
-      console.log(
-        'ADMIN ROLE:',
-        role
-      );
+  console.log(  
+    'ADMIN ROLE:',  
+    role  
+  );  
 
-      if (
-        !['admin', 'supervisor']
-          .includes(role)
-      ) {
+  if (  
+    !['admin', 'supervisor']  
+      .includes(role)  
+  ) {  
 
-        $('adminGate').innerHTML =
-          'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
-          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+    $('adminGate').innerHTML =  
+      'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +  
+      '<a class="btn primary" href="index.html">العودة للرئيسية</a>';  
 
-        return;
-      }
+    return;  
+  }  
 
-      currentUserRole =
-        role;
+  currentUserRole =  
+    role;  
 
-      currentPermissions =
-        Array.isArray(
-          userData.permissions
-        )
-          ? userData.permissions
-          : [];
+  currentPermissions =  
+    Array.isArray(  
+      userData.permissions  
+    )  
+      ? userData.permissions  
+      : [];  
 
-      $('adminGate').hidden =
-        true;
+  $('adminGate').hidden =  
+    true;  
 
-      $('adminApp').hidden =
-        false;
+  $('adminApp').hidden =  
+    false;  
 
-      $('adminEmail').textContent =
-        'المشرف: ' +
-        (user.email || '') +
-        ' — ' +
-        (
-          currentUserRole === 'admin'
-            ? 'مدير كامل'
-            : 'مشرف متخصص'
-        );
+  $('adminEmail').textContent =  
+    'المشرف: ' +  
+    (user.email || '') +  
+    ' — ' +  
+    (  
+      currentUserRole === 'admin'  
+        ? 'مدير كامل'  
+        : 'مشرف متخصص'  
+    );  
 
 
-      // المشرف المتخصص
-      if (
-        currentUserRole !== 'admin'
-      ) {
+  // المشرف المتخصص  
+  if (  
+    currentUserRole !== 'admin'  
+  ) {  
 
-        $('filterCategory')
-          .querySelectorAll('option')
-          .forEach(o => {
+    $('filterCategory')  
+      .querySelectorAll('option')  
+      .forEach(o => {  
 
-            if (
-              o.value !== 'all' &&
-              !canManage(o.value)
-            ) {
+        if (  
+          o.value !== 'all' &&  
+          !canManage(o.value)  
+        ) {  
 
-              o.hidden =
-                true;
+          o.hidden =  
+            true;  
 
-            }
+        }  
 
-          });
+      });  
 
-        $('category')
-          .querySelectorAll('option')
-          .forEach(o => {
+    $('category')  
+      .querySelectorAll('option')  
+      .forEach(o => {  
 
-            if (
-              !canManage(o.value)
-            ) {
+        if (  
+          !canManage(o.value)  
+        ) {  
 
-              o.remove();
+          o.remove();  
 
-            }
+        }  
 
-          });
+      });  
 
-        $('supervisorsCard').hidden =
-          true;
+    $('supervisorsCard').hidden =  
+      true;  
 
-        const inquiriesCard =
-          $('inquiriesList')
-            .closest(
-              '.admin-wide-card'
-            );
+    const inquiriesCard =  
+      $('inquiriesList')  
+        .closest(  
+          '.admin-wide-card'  
+        );  
 
-        if (inquiriesCard) {
+    if (inquiriesCard) {  
 
-          inquiriesCard.hidden =
-            !canManage(
-              'inquiries'
-            );
+      inquiriesCard.hidden =  
+        !canManage(  
+          'inquiries'  
+        );  
 
-        }
+    }  
 
-        const canManagePosts =
-          Object.keys(
-            ADMIN_CATEGORIES
-          ).some(
-            canManage
-          );
+    const canManagePosts =  
+      Object.keys(  
+        ADMIN_CATEGORIES  
+      ).some(  
+        canManage  
+      );  
 
-        $('postForm').hidden =
-          !canManagePosts;
+    $('postForm').hidden =  
+      !canManagePosts;  
 
-        const postsCard =
-          $('postsList')
-            .closest(
-              '.admin-card'
-            );
+    const postsCard =  
+      $('postsList')  
+        .closest(  
+          '.admin-card'  
+        );  
 
-        if (postsCard) {
+    if (postsCard) {  
 
-          postsCard.hidden =
-            !canManagePosts;
+      postsCard.hidden =  
+        !canManagePosts;  
 
-        }
+    }  
 
-      }
+  }  
 
 
-      console.log(
-        'ADMIN: جاري تحميل المنشورات...'
-      );
+  console.log(  
+    'ADMIN: جاري تحميل المنشورات...'  
+  );  
 
-      await loadPosts();
+  await loadPosts();  
 
-      console.log(
-        'ADMIN: تم تحميل المنشورات.'
-      );
+  console.log(  
+    'ADMIN: تم تحميل المنشورات.'  
+  );  
 
 
-      if (
-        canManage('inquiries')
-      ) {
+  if (  
+    canManage('inquiries')  
+  ) {  
 
-        await loadInquiries();
+    await loadInquiries();  
 
-        if (
-          window.WasitNotifications
-        ) {
+    if (  
+      window.WasitNotifications  
+    ) {  
 
-          stopAdminNotifications =
-            WasitNotifications
-              .listenAdminInquiries(
-                user,
-                updateAdminNotificationBadge
-              );
+      stopAdminNotifications =  
+        WasitNotifications  
+          .listenAdminInquiries(  
+            user,  
+            updateAdminNotificationBadge  
+          );  
 
-        }
+    }  
 
-      }
+  }  
 
 
-      if (
-        typeof loadSupervisors ===
-        'function' &&
-        currentUserRole === 'admin'
-      ) {
+  if (  
+    typeof loadSupervisors ===  
+    'function' &&  
+    currentUserRole === 'admin'  
+  ) {  
 
-        await loadSupervisors();
+    await loadSupervisors();  
 
-      }
+  }  
 
 
-      if (
-        typeof refreshDashboard ===
-        'function'
-      ) {
+  if (  
+    typeof refreshDashboard ===  
+    'function'  
+  ) {  
 
-        await refreshDashboard();
+    await refreshDashboard();  
 
-      }
+  }  
 
-      console.log(
-        'ADMIN: تم فتح لوحة التحكم بنجاح.'
-      );
+  console.log(  
+    'ADMIN: تم فتح لوحة التحكم بنجاح.'  
+  );  
 
-    } catch (e) {
+} catch (e) {  
 
-      console.error(
-        'ADMIN ACCESS ERROR:',
-        e
-      );
+  console.error(  
+    'ADMIN ACCESS ERROR:',  
+    e  
+  );  
 
-      $('adminGate').innerHTML =
-        'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +
-        '<small>' +
-        (
-          e?.message ||
-          e?.code ||
-          'خطأ غير معروف'
-        ) +
-        '</small>';
+  $('adminGate').innerHTML =  
+    'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +  
+    '<small>' +  
+    (  
+      e?.message ||  
+      e?.code ||  
+      'خطأ غير معروف'  
+    ) +  
+    '</small>';  
 
-    }
+}
 
-  }
+}
 );
