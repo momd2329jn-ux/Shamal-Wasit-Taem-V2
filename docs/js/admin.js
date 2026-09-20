@@ -1109,34 +1109,40 @@ if (
 
 try {  
 
-  // صورة جديدة  
-  if (selectedImageData) {  
+ // ======================================================
+// حفظ الصورة
+// ======================================================
 
-    data.imageData =  
-      selectedImageData;  
+// صورة جديدة
+if (selectedImageData) {
 
-    data.imageUrl =  
-      firebase.firestore.FieldValue  
-        .delete();  
+  data.imageData =
+    selectedImageData;
 
-  }  
+  // نحذف imageUrl القديمة فقط عند تعديل منشور موجود
+  if (id) {
+    data.imageUrl =
+      firebase.firestore.FieldValue
+        .delete();
+  }
 
-  // إزالة الصورة  
-  else if (  
-    id &&  
-    removeExistingImage  
-  ) {  
+}
 
-    data.imageData =  
-      firebase.firestore.FieldValue  
-        .delete();  
+// إزالة الصورة الموجودة
+else if (
+  id &&
+  removeExistingImage
+) {
 
-    data.imageUrl =  
-      firebase.firestore.FieldValue  
-        .delete();  
+  data.imageData =
+    firebase.firestore.FieldValue
+      .delete();
 
-  }  
+  data.imageUrl =
+    firebase.firestore.FieldValue
+      .delete();
 
+}
   // منشور جديد أو تعديل  
   if (id) {  
 
