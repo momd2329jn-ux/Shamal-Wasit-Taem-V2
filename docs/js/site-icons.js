@@ -1,42 +1,113 @@
 // ======================================================
-// site-icons.js - عرض أيقونات الفريق في الفوتر
+// site-icons.js
+// تحميل أيقونات الفريق من Firestore
 // فريق شمال واسط
 // ======================================================
 
-(function(){
-  async function loadSiteIcons(){
-    const container = document.querySelector('.footer-socials');
-    if (!container) return;
+(function () {
 
-    try {
-      // نحاول نقرأ الأيقونات من Firestore
-      const snap = await db.collection('siteIcons')
-        .where('active', '==', true)
-        .orderBy('order', 'asc')
-        .get();
+  function escapeHtml(value) {
 
-      // إذا ما في أيقونات في Firestore، نستخدم الأيقونات الافتراضية
-      if (snap.empty) return;
+    return String(value || '')
+      .replace(/[&<>'"]/g, function (char) {
 
-      container.innerHTML = snap.docs.map(doc => {
-        const d = doc.data();
-        return `<span class="social-icon" title="${d.label || ''}" aria-label="${d.label || ''}">${d.symbol || '●'}</span>`;
-      }).join('');
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[char];
 
-    } catch (e) {
-      // نتجاهل الأخطاء — الأيقونات الافتراضية تبقى
-      console.warn('تعذر تحميل أيقونات الفريق، سيتم استخدام الأيقونات الافتراضية.', e);
-    }
+      });
+
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // ننتظر حتى يكون db جاهز
-    const wait = setInterval(() => {
-      if (window.db) {
-        clearInterval(wait);
-        loadSiteIcons();
+  async function loadSiteIcons() {
+
+    const container =
+      document.querySelector('.footer-socials');
+
+    if (!container) {
+      return;
+    }
+
+    try {
+
+      const snap = await db
+        .collection('siteIcons')
+        .where('active', '==', true)
+        .get();
+
+      if (snap.empty) {
+        return;
       }
-    }, 100);
-    setTimeout(() => clearInterval(wait), 5000);
-  });
+
+      const icons = snap.docs
+        .map(function (doc) {
+
+          const data = doc.data();
+
+          return {
+            label: data.label || '',
+            symbol: data.symbol || '●',
+            order: Number(data.order || 0)
+          };
+
+        })
+        .sort(function (a, b) {
+
+          return a.order - b.order;
+
+        });
+
+      container.innerHTML = icons
+        .map(function (icon) {
+
+          return `
+            <span
+              class="social-icon"
+              title="${escapeHtml(icon.label)}"
+              aria-label="${escapeHtml(icon.label)}"
+            >${escapeHtml(icon.symbol)}</span>
+          `;
+
+        })
+        .join('');
+
+    } catch (error) {
+
+      console.warn(
+        'تعذر تحميل أيقونات الفريق، سيتم استخدام الأيقونات الافتراضية.',
+        error
+      );
+
+    }
+
+  }
+
+  function start() {
+
+    if (!window.db) {
+      setTimeout(start, 100);
+      return;
+    }
+
+    loadSiteIcons();
+
+  }
+
+  if (document.readyState === 'loading') {
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      start
+    );
+
+  } else {
+
+    start();
+
+  }
+
 })();
