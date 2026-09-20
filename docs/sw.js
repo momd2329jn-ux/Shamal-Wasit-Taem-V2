@@ -3,7 +3,7 @@
 // فريق شمال واسط
 // ======================================================
 
-const CACHE_NAME = 'shamal-wasit-v20';
+const CACHE_NAME = 'shamal-wasit-v21';
 
 const APP_SHELL = [
   './',
@@ -11,68 +11,211 @@ const APP_SHELL = [
   './css/style.css',
   './js/app.js',
   './js/feeds.js',
+  './js/site-icons.js',
   './images/logo.png',
   './images/hero.jpg',
   './manifest.json'
 ];
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
-});
+self.addEventListener(
+  'install',
+  function (event) {
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
-  );
-});
+    event.waitUntil(
 
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+      caches
+        .open(CACHE_NAME)
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {});
-        return res;
-      }).catch(() => cached);
-    })
-  );
-});
+        .then(function (cache) {
 
-self.addEventListener('push', event => {
-  let data = { title: 'فريق شمال واسط', body: 'لديك إشعار جديد' };
-  try {
-    data = event.data ? event.data.json() : data;
-  } catch (e) {}
+          return cache.addAll(
+            APP_SHELL
+          );
 
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'فريق شمال واسط', {
-      body: data.body || '',
-      icon: 'images/icon-192.png',
-      badge: 'images/icon-192.png',
-      dir: 'rtl',
-      lang: 'ar'
-    })
-  );
-});
+        })
 
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      for (const c of list) {
-        if ('focus' in c) return c.focus();
-      }
-      return clients.openWindow('./index.html');
-    })
-  );
-});
+        .then(function () {
+
+          return self.skipWaiting();
+
+        })
+
+    );
+
+  }
+);
+
+
+self.addEventListener(
+  'activate',
+  function (event) {
+
+    event.waitUntil(
+
+      caches
+        .keys()
+
+        .then(function (keys) {
+
+          return Promise.all(
+
+            keys
+              .filter(function (key) {
+
+                return key !== CACHE_NAME;
+
+              })
+
+              .map(function (key) {
+
+                return caches.delete(key);
+
+              })
+
+          );
+
+        })
+
+        .then(function () {
+
+          return self.clients.claim();
+
+        })
+
+    );
+
+  }
+);
+
+
+self.addEventListener(
+  'fetch',
+  function (event) {
+
+    if (
+      event.request.method !== 'GET'
+    ) {
+      return;
+    }
+
+
+    event.respondWith(
+
+      caches
+        .match(event.request)
+
+        .then(function (cached) {
+
+          return cached ||
+
+            fetch(event.request)
+
+              .then(function (response) {
+
+                const copy =
+                  response.clone();
+
+                caches
+                  .open(CACHE_NAME)
+                  .then(function (cache) {
+
+                    cache
+                      .put(
+                        event.request,
+                        copy
+                      )
+                      .catch(function () {});
+
+                  });
+
+                return response;
+
+              })
+
+              .catch(function () {
+
+                return cached;
+
+              });
+
+        })
+
+    );
+
+  }
+);
+
+
+self.addEventListener(
+  'push',
+  function (event) {
+
+    let data = {
+      title: 'فريق شمال واسط',
+      body: 'لديك إشعار جديد'
+    };
+
+
+    try {
+
+      data =
+        event.data
+          ? event.data.json()
+          : data;
+
+    } catch (e) {}
+
+
+    event.waitUntil(
+
+      self.registration.showNotification(
+        data.title || 'فريق شمال واسط',
+        {
+          body: data.body || '',
+          icon: 'images/icon-192.png',
+          badge: 'images/icon-192.png',
+          dir: 'rtl',
+          lang: 'ar'
+        }
+      )
+
+    );
+
+  }
+);
+
+
+self.addEventListener(
+  'notificationclick',
+  function (event) {
+
+    event.notification.close();
+
+    event.waitUntil(
+
+      clients
+        .matchAll({
+          type: 'window',
+          includeUncontrolled: true
+        })
+
+        .then(function (list) {
+
+          for (const client of list) {
+
+            if ('focus' in client) {
+              return client.focus();
+            }
+
+          }
+
+          return clients.openWindow(
+            './index.html'
+          );
+
+        })
+
+    );
+
+  }
+);
