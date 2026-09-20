@@ -70,25 +70,6 @@
 <div id="supervisorsList"><div class="empty-state">جاري تحميل الأعضاء...</div></div>
 </div>
 
-<div class="admin-card admin-wide-card" id="iconsCard" hidden>
-  <div class="admin-list-head">
-    <div>
-      <h3>إدارة أيقونات الفريق</h3>
-      <p class="muted">يمكن للمدير إضافة أيقونات جديدة مستقبلًا من هنا دون تعديل كود الموقع أو قواعد البيانات.</p>
-    </div>
-    <button type="button" class="btn mini" id="refreshIcons">تحديث</button>
-  </div>
-  <form id="iconForm" class="admin-card" style="margin:0 0 16px;padding:18px;">
-    <input type="hidden" id="iconEditingId">
-    <label>اسم الأيقونة<input id="iconLabel" maxlength="40" required placeholder="مثال: يوتيوب"></label>
-    <label>رمز الأيقونة<input id="iconSymbol" maxlength="8" required placeholder="مثال: ▶"></label>
-    <label>ترتيب الظهور<input id="iconOrder" type="number" min="0" step="1" value="100"></label>
-    <label class="permission-check"><input id="iconActive" type="checkbox" checked> إظهار الأيقونة</label>
-    <div class="form-actions"><button class="btn primary" type="submit" id="saveIconBtn">إضافة الأيقونة</button><button class="btn secondary-btn" type="button" id="cancelIconEdit" hidden>إلغاء</button></div>
-    <div id="iconFormMessage" class="form-message" role="status"></div>
-  </form>
-  <div id="iconsList" class="icon-manager-list"><div class="empty-state">جاري التحميل...</div></div>
-</div>
 
 <div class="admin-card admin-wide-card"><div class="admin-list-head"><h3>استفسارات المواطنين</h3><button type="button" class="btn mini" id="refreshInquiries">تحديث</button></div><div id="inquiriesList"><div class="empty-state">جاري التحميل...</div></div></div>
 </div>
