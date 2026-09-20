@@ -723,6 +723,9 @@ function updateAdminNotificationBadge(count){
 // ======================================================
 
 auth.onAuthStateChanged(async user => {
+
+  console.log('ADMIN AUTH CHECK:', user ? user.uid : 'NO USER');
+
   if (!user) {
     location.href = 'login.html?next=admin.html';
     return;
@@ -731,46 +734,122 @@ auth.onAuthStateChanged(async user => {
   currentUser = user;
 
   try {
+
+    console.log('ADMIN: جاري قراءة بيانات المستخدم...');
+
     const doc = await db.collection('users').doc(user.uid).get();
 
-    if (!doc.exists || !['admin', 'supervisor'].includes(doc.data().role)) {
+    console.log('ADMIN USER DOC:', doc.exists ? doc.data() : 'DOCUMENT NOT FOUND');
+
+    if (!doc.exists) {
       $('adminGate').innerHTML =
-        'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
+        'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
         '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
       return;
     }
 
-    currentUserRole = doc.data().role || 'user';
-    currentPermissions = Array.isArray(doc.data().permissions) ? doc.data().permissions : [];
+    const userData = doc.data();
+    const role = String(userData.role || 'user').trim().toLowerCase();
+
+    console.log('ADMIN ROLE:', role);
+
+    if (!['admin', 'supervisor'].includes(role)) {
+
+      $('adminGate').innerHTML =
+        'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
+        '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+      return;
+    }
+
+    currentUserRole = role;
+
+    currentPermissions = Array.isArray(userData.permissions)
+      ? userData.permissions
+      : [];
 
     $('adminGate').hidden = true;
     $('adminApp').hidden = false;
-    $('adminEmail').textContent = 'المشرف: ' + user.email + ' — ' +
-      (currentUserRole === 'admin' ? 'مدير كامل' : 'مشرف متخصص');
 
+    $('adminEmail').textContent =
+      'المشرف: ' +
+      (user.email || '') +
+      ' — ' +
+      (currentUserRole === 'admin'
+        ? 'مدير كامل'
+        : 'مشرف متخصص');
+
+    // المشرف المتخصص
     if (currentUserRole !== 'admin') {
+
       $('filterCategory').querySelectorAll('option').forEach(o => {
-        if (o.value !== 'all' && !canManage(o.value)) o.hidden = true;
+
+        if (
+          o.value !== 'all' &&
+          !canManage(o.value)
+        ) {
+          o.hidden = true;
+        }
+
       });
+
       $('category').querySelectorAll('option').forEach(o => {
-        if (!canManage(o.value)) o.remove();
+
+        if (!canManage(o.value)) {
+          o.remove();
+        }
+
       });
+
       $('supervisorsCard').hidden = true;
-      $('inquiriesList').closest('.admin-wide-card').hidden = !canManage('inquiries');
-      $('postForm').hidden = !Object.keys(ADMIN_CATEGORIES).some(canManage);
-      $('postsList').closest('.admin-card').hidden = !Object.keys(ADMIN_CATEGORIES).some(canManage);
+
+      const inquiriesCard =
+        $('inquiriesList').closest('.admin-wide-card');
+
+      if (inquiriesCard) {
+        inquiriesCard.hidden = !canManage('inquiries');
+      }
+
+      const canManagePosts =
+        Object.keys(ADMIN_CATEGORIES).some(canManage);
+
+      $('postForm').hidden = !canManagePosts;
+
+      const postsCard =
+        $('postsList').closest('.admin-card');
+
+      if (postsCard) {
+        postsCard.hidden = !canManagePosts;
+      }
+
     }
+
+    console.log('ADMIN: جاري تحميل المنشورات...');
 
     await loadPosts();
 
+    console.log('ADMIN: تم تحميل المنشورات.');
+
     if (canManage('inquiries')) {
+
       await loadInquiries();
+
       if (window.WasitNotifications) {
-        stopAdminNotifications = WasitNotifications.listenAdminInquiries(user, updateAdminNotificationBadge);
+
+        stopAdminNotifications =
+          WasitNotifications.listenAdminInquiries(
+            user,
+            updateAdminNotificationBadge
+          );
+
       }
+
     }
 
-    if (typeof loadSupervisors === 'function' && currentUserRole === 'admin') {
+    if (
+      typeof loadSupervisors === 'function' &&
+      currentUserRole === 'admin'
+    ) {
       await loadSupervisors();
     }
 
@@ -778,8 +857,19 @@ auth.onAuthStateChanged(async user => {
       await refreshDashboard();
     }
 
+    console.log('ADMIN: تم فتح لوحة التحكم بنجاح.');
+
   } catch (e) {
-    console.error(e);
-    $('adminGate').textContent = 'تعذر التحقق من صلاحيات الحساب.';
+
+    console.error('ADMIN ACCESS ERROR:', e);
+
+    $('adminGate').innerHTML =
+      'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +
+      '<small>' +
+      (e?.message || e?.code || 'خطأ غير معروف') +
+      '</small>';
+
   }
+
 });
+
