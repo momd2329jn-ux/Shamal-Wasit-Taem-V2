@@ -27,7 +27,7 @@
         .where('active', '==', true)
         .get();
 
-      const categories = snap.docs.map(function (doc) {
+      const customCategories = snap.docs.map(function (doc) {
 
         const data = doc.data();
 
@@ -36,25 +36,54 @@
           title: data.title || '',
           icon: data.icon || '●',
           description: data.description || '',
-          order: Number(data.order || 999999)
+          order: Math.max(1, Number(data.order || 999999)),
+          createdAt: data.createdAt
         };
 
-      }).sort(function (a, b) {
-        return a.order - b.order;
       });
 
-      // إذا ماكو أقسام مخصصة، ما نسوي أي تغيير
-      if (!categories.length) {
+      if (!customCategories.length) {
         return;
       }
 
       /*
-       * الأقسام الموجودة أصلًا في index.html
-       * تبقى كما هي، ونستخدم ترتيب القسم المخصص
-       * لتحديد مكان إدخاله بينها.
+       * الأقسام الأصلية الموجودة في index.html
+       * نعتبر ترتيبها الحالي هو ترتيبها الأساسي.
        */
 
-      categories.forEach(function (category) {
+      const fixedCards = Array.from(
+        container.querySelectorAll('.category-card')
+      );
+
+      /*
+       * نبني قائمة موحدة.
+       *
+       * الأقسام الأصلية:
+       * الأخبار = 1
+       * الفعاليات = 2
+       * المقالات = 3
+       * الصحة = 4
+       * البيئة = 5
+       * الاستفسارات = 6
+       * تواصل معنا = 7
+       */
+
+      let items = fixedCards.map(function (card, index) {
+
+        return {
+          element: card,
+          order: index + 1,
+          fixed: true,
+          originalIndex: index
+        };
+
+      });
+
+      /*
+       * نضيف الأقسام المخصصة حسب الرقم الذي اختاره المدير.
+       */
+
+      customCategories.forEach(function (category, index) {
 
         const card = document.createElement('a');
 
@@ -76,49 +105,60 @@
           <span>عرض المحتوى ←</span>
         `;
 
-        /*
-         * order = 1
-         * يعني أول بطاقة في الأقسام.
-         *
-         * order = 2
-         * يعني ثاني بطاقة.
-         *
-         * وهكذا.
-         */
+        items.push({
+          element: card,
+          order: category.order,
+          fixed: false,
+          originalIndex: fixedCards.length + index
+        });
 
-        const existingCards =
-          Array.from(
-            container.querySelectorAll('.category-card')
-          );
+      });
 
-        const position =
-          Math.max(
-            0,
-            Math.min(
-              category.order - 1,
-              existingCards.length
-            )
-          );
+      /*
+       * ترتيب الأقسام حسب الرقم.
+       *
+       * القسم المخصص إذا أخذ نفس رقم قسم موجود،
+       * يأتي مكانه ويدفع الباقي بعده.
+       */
 
-        if (existingCards[position]) {
+      items.sort(function (a, b) {
 
-          container.insertBefore(
-            card,
-            existingCards[position]
-          );
-
-        } else {
-
-          container.appendChild(card);
-
+        if (a.order !== b.order) {
+          return a.order - b.order;
         }
 
+        /*
+         * عند تساوي الرقم:
+         * القسم المخصص يكون أولًا،
+         * وبعده القسم القديم.
+         */
+
+        if (!a.fixed && b.fixed) {
+          return -1;
+        }
+
+        if (a.fixed && !b.fixed) {
+          return 1;
+        }
+
+        return a.originalIndex - b.originalIndex;
+
+      });
+
+      /*
+       * إعادة ترتيب البطاقات داخل الصفحة.
+       */
+
+      container.innerHTML = '';
+
+      items.forEach(function (item) {
+        container.appendChild(item.element);
       });
 
     } catch (error) {
 
-      console.warn(
-        'تعذر تحميل الأقسام الجديدة.',
+      console.error(
+        'تعذر تحميل وترتيب الأقسام الجديدة:',
         error
       );
 
