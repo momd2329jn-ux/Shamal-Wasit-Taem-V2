@@ -71,64 +71,117 @@
 </div>
 
 <div class="admin-card admin-wide-card" id="siteCategoriesCard">
+
   <div class="admin-list-head">
     <div>
       <h3>إدارة أقسام الموقع</h3>
-      <p class="muted">إضافة وتعديل وترتيب أقسام الموقع وأيقوناتها.</p>
+      <p class="muted">
+        إضافة وتعديل وترتيب الأقسام الجديدة وأيقوناتها.
+      </p>
     </div>
-    <button type="button" class="btn mini" id="resetCategoryForm">قسم جديد</button>
+
+    <button
+      type="button"
+      class="btn mini"
+      id="resetCategoryForm"
+    >
+      قسم جديد
+    </button>
   </div>
 
   <form id="siteCategoryForm" class="category-admin-form">
+
     <input type="hidden" id="siteCategoryId">
 
     <div class="form-grid">
+
       <label>
         اسم القسم
-        <input id="siteCategoryTitle" maxlength="80" required placeholder="مثال: المجتمع">
+        <input
+          id="siteCategoryTitle"
+          maxlength="80"
+          required
+          placeholder="مثال: المجتمع"
+        >
       </label>
 
       <label>
         الأيقونة
-        <input id="siteCategoryIcon" maxlength="10" required placeholder="🤝">
+        <input
+          id="siteCategoryIcon"
+          maxlength="10"
+          required
+          placeholder="🤝"
+        >
       </label>
 
       <label>
         وصف القسم
-        <input id="siteCategoryDescription" maxlength="180" required placeholder="وصف مختصر للقسم">
-      </label>
-
-      <label>
-        رابط الصفحة
-        <input id="siteCategoryLink" maxlength="180" required placeholder="community.html">
+        <input
+          id="siteCategoryDescription"
+          maxlength="180"
+          required
+          placeholder="وصف مختصر للقسم"
+        >
       </label>
 
       <label>
         ترتيب القسم
-        <input id="siteCategoryOrder" type="number" min="1" value="1" required>
+        <input
+          id="siteCategoryOrder"
+          type="number"
+          min="1"
+          value="1"
+          required
+        >
       </label>
 
       <label class="checkbox-field">
-        <input id="siteCategoryActive" type="checkbox" checked>
+        <input
+          id="siteCategoryActive"
+          type="checkbox"
+          checked
+        >
         القسم ظاهر في الموقع
       </label>
+
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn primary" id="saveSiteCategory">
+
+      <button
+        type="submit"
+        class="btn primary"
+        id="saveSiteCategory"
+      >
         حفظ القسم
       </button>
-      <button type="button" class="btn secondary-btn" id="cancelSiteCategory" hidden>
+
+      <button
+        type="button"
+        class="btn secondary-btn"
+        id="cancelSiteCategory"
+        hidden
+      >
         إلغاء التعديل
       </button>
+
     </div>
 
-    <div id="siteCategoryMessage" class="form-message" role="status"></div>
+    <div
+      id="siteCategoryMessage"
+      class="form-message"
+      role="status"
+    ></div>
+
   </form>
 
   <div id="siteCategoriesList">
-    <div class="empty-state">جاري تحميل الأقسام...</div>
+    <div class="empty-state">
+      جاري تحميل الأقسام...
+    </div>
   </div>
+
 </div>
 <div class="admin-card admin-wide-card"><div class="admin-list-head"><h3>استفسارات المواطنين</h3><button type="button" class="btn mini" id="refreshInquiries">تحديث</button></div><div id="inquiriesList"><div class="empty-state">جاري التحميل...</div></div></div>
 </div>
@@ -166,7 +219,6 @@
 <script src="js/permissions.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/dashboard.js"></script>
-<script src="js/site-icons-admin.js"></script>
 <script src="js/site-categories-admin.js"></script>
 <script src="js/app.js"></script>
 
