@@ -1,8 +1,3 @@
-// ======================================================
-// أقسام الموقع الديناميكية
-// فريق شمال واسط
-// ======================================================
-
 (function () {
 
   function esc(value) {
@@ -19,79 +14,108 @@
 
   async function loadSiteCategories() {
 
-    const container = document.querySelector('.category-grid');
+    const container =
+      document.querySelector('.category-grid');
 
-    if (!container || typeof db === 'undefined') return;
+    if (
+      !container ||
+      typeof db === 'undefined'
+    ) {
+      return;
+    }
 
     try {
 
       const snap = await db
         .collection('siteCategories')
+        .where('type', '==', 'custom')
         .where('active', '==', true)
         .get();
 
-      // إذا ماكو بيانات، نخلي الأقسام الأصلية الموجودة بالكود
-      if (snap.empty) return;
+      const categories =
+        snap.docs
+          .map(function (doc) {
 
-      const categories = snap.docs
-        .map(function (doc) {
-          const data = doc.data();
+            const data = doc.data();
 
-          return {
-            title: data.title || '',
-            icon: data.icon || '●',
-            description: data.description || '',
-            link: data.link || '#',
-            order: Number(data.order || 0)
-          };
-        })
-        .sort(function (a, b) {
-          return a.order - b.order;
-        });
+            return {
+              id: doc.id,
+              title: data.title || '',
+              icon: data.icon || '●',
+              description:
+                data.description || '',
+              order:
+                Number(data.order || 0)
+            };
 
-      if (!categories.length) return;
+          })
+          .sort(function (a, b) {
+            return a.order - b.order;
+          });
 
-      container.innerHTML = categories.map(function (category) {
+      categories.forEach(function (category) {
 
-        return `
-          <a class="category-card" href="${esc(category.link)}">
+        const card =
+          document.createElement('a');
 
-            <div class="category-icon">
-              ${esc(category.icon)}
-            </div>
+        card.className =
+          'category-card';
 
-            <h3>${esc(category.title)}</h3>
+        card.href =
+          'category.html?id=' +
+          encodeURIComponent(category.id);
 
-            <p>${esc(category.description)}</p>
+        card.innerHTML = `
 
-            <span>
-              عرض المحتوى ←
-            </span>
+          <div class="category-icon">
+            ${esc(category.icon)}
+          </div>
 
-          </a>
+          <h3>
+            ${esc(category.title)}
+          </h3>
+
+          <p>
+            ${esc(category.description)}
+          </p>
+
+          <span>
+            عرض المحتوى ←
+          </span>
+
         `;
 
-      }).join('');
+        container.appendChild(card);
+
+      });
 
     } catch (error) {
 
-      // إذا صار أي خطأ، تبقى الأقسام الأصلية الموجودة في index.html
       console.warn(
-        'تعذر تحميل أقسام الموقع الديناميكية، سيتم استخدام الأقسام الافتراضية.',
+        'تعذر تحميل الأقسام الجديدة.',
         error
       );
-
     }
   }
+
+  window.loadCustomCategories =
+    loadSiteCategories;
 
   function start() {
     loadSiteCategories();
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      start
+    );
+
   } else {
+
     start();
+
   }
 
 })();
