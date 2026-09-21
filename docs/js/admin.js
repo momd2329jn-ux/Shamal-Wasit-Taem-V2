@@ -1,10 +1,12 @@
 // ======================================================
 // admin.js - إدارة المنشورات + رفع الصور + الاستفسارات
+// + الأقسام الديناميكية
 // فريق شمال واسط
 // ======================================================
 
-function canManage(key){
-return currentUserRole === 'admin' || (currentPermissions || []).includes(key);
+function canManage(key) {
+  return currentUserRole === 'admin' ||
+    (currentPermissions || []).includes(key);
 }
 
 let currentUserRole = 'user';
@@ -12,13 +14,47 @@ let currentPermissions = [];
 let stopAdminNotifications = null;
 let currentUser = null;
 
+// ======================================================
+// الأقسام الأساسية - لا يتم تغييرها
+// ======================================================
+
 const ADMIN_CATEGORIES = {
-news: { title: 'الأخبار', icon: '📰', collection: 'news' },
-events: { title: 'الفعاليات', icon: '📅', collection: 'events' },
-articles: { title: 'المقالات', icon: '📚', collection: 'articles' },
-health: { title: 'الصحة', icon: '🩺', collection: 'health' },
-environment: { title: 'البيئة', icon: '🌱', collection: 'environment' }
+  news: {
+    title: 'الأخبار',
+    icon: '📰',
+    collection: 'news'
+  },
+
+  events: {
+    title: 'الفعاليات',
+    icon: '📅',
+    collection: 'events'
+  },
+
+  articles: {
+    title: 'المقالات',
+    icon: '📚',
+    collection: 'articles'
+  },
+
+  health: {
+    title: 'الصحة',
+    icon: '🩺',
+    collection: 'health'
+  },
+
+  environment: {
+    title: 'البيئة',
+    icon: '🌱',
+    collection: 'environment'
+  }
 };
+
+// ======================================================
+// الأقسام الجديدة الديناميكية
+// ======================================================
+
+const CUSTOM_CATEGORIES = {};
 
 const $ = id => document.getElementById(id);
 
@@ -31,6 +67,221 @@ const esc = v => String(v || '').replace(/[&<>'"]/g, c => ({
 }[c]));
 
 // ======================================================
+// تحميل الأقسام الجديدة
+// ======================================================
+
+async function loadCustomCategories() {
+
+  try {
+
+    const snap = await db
+      .collection('siteCategories')
+      .where('type', '==', 'custom')
+      .get();
+
+    Object.keys(CUSTOM_CATEGORIES).forEach(key => {
+      delete CUSTOM_CATEGORIES[key];
+    });
+
+    snap.forEach(doc => {
+
+      const d = doc.data();
+
+      CUSTOM_CATEGORIES['custom:' + doc.id] = {
+        title: d.title || 'قسم جديد',
+        icon: d.icon || '●',
+        collection: 'siteCategoryPosts',
+        categoryId: doc.id,
+        active: d.active !== false
+      };
+
+    });
+
+    updateCategorySelectors();
+
+  } catch (error) {
+
+    console.error(
+      'LOAD CUSTOM CATEGORIES ERROR:',
+      error
+    );
+
+  }
+}
+
+// ======================================================
+// تحديث قائمة اختيار القسم
+// ======================================================
+
+function updateCategorySelectors() {
+
+  const categorySelect = $('category');
+  const filterSelect = $('filterCategory');
+
+  if (!categorySelect || !filterSelect) {
+    return;
+  }
+
+  // ----------------------------------------------------
+  // الاحتفاظ بالقيمة الحالية
+  // ----------------------------------------------------
+
+  const currentCategory =
+    categorySelect.value;
+
+  const currentFilter =
+    filterSelect.value;
+
+  // ----------------------------------------------------
+  // الأقسام الأساسية
+  // ----------------------------------------------------
+
+  const baseCategoryOptions = [
+    {
+      value: 'news',
+      label: '📰 الأخبار'
+    },
+    {
+      value: 'events',
+      label: '📅 الفعاليات'
+    },
+    {
+      value: 'articles',
+      label: '📚 المقالات'
+    },
+    {
+      value: 'health',
+      label: '🩺 الصحة'
+    },
+    {
+      value: 'environment',
+      label: '🌱 البيئة'
+    }
+  ];
+
+  // ----------------------------------------------------
+  // إعادة بناء قائمة المنشور
+  // ----------------------------------------------------
+
+  categorySelect.innerHTML =
+    baseCategoryOptions.map(option => `
+      <option value="${option.value}">
+        ${option.label}
+      </option>
+    `).join('');
+
+  // ----------------------------------------------------
+  // الأقسام الجديدة - المدير فقط
+  // ----------------------------------------------------
+
+  if (currentUserRole === 'admin') {
+
+    Object.keys(CUSTOM_CATEGORIES)
+      .sort((a, b) =>
+        CUSTOM_CATEGORIES[a].title.localeCompare(
+          CUSTOM_CATEGORIES[b].title,
+          'ar'
+        )
+      )
+      .forEach(key => {
+
+        const cfg =
+          CUSTOM_CATEGORIES[key];
+
+        if (cfg.active === false) {
+          return;
+        }
+
+        const option =
+          document.createElement('option');
+
+        option.value = key;
+
+        option.textContent =
+          cfg.icon + ' ' + cfg.title;
+
+        categorySelect.appendChild(option);
+
+      });
+  }
+
+  // ----------------------------------------------------
+  // فلتر المنشورات
+  // ----------------------------------------------------
+
+  filterSelect.innerHTML = `
+    <option value="all">
+      الكل
+    </option>
+
+    ${baseCategoryOptions.map(option => `
+      <option value="${option.value}">
+        ${option.label}
+      </option>
+    `).join('')}
+
+    ${
+      currentUserRole === 'admin'
+        ? Object.keys(CUSTOM_CATEGORIES)
+            .sort((a, b) =>
+              CUSTOM_CATEGORIES[a].title.localeCompare(
+                CUSTOM_CATEGORIES[b].title,
+                'ar'
+              )
+            )
+            .map(key => {
+
+              const cfg =
+                CUSTOM_CATEGORIES[key];
+
+              return `
+                <option value="${key}">
+                  ${cfg.icon} ${esc(cfg.title)}
+                </option>
+              `;
+
+            }).join('')
+        : ''
+    }
+  `;
+
+  // ----------------------------------------------------
+  // استرجاع القيم السابقة إذا كانت ما زالت موجودة
+  // ----------------------------------------------------
+
+  if (
+    [...categorySelect.options]
+      .some(o => o.value === currentCategory)
+  ) {
+    categorySelect.value =
+      currentCategory;
+  }
+
+  if (
+    [...filterSelect.options]
+      .some(o => o.value === currentFilter)
+  ) {
+    filterSelect.value =
+      currentFilter;
+  }
+
+  // ----------------------------------------------------
+  // إذا لم تكن القيمة موجودة
+  // ----------------------------------------------------
+
+  if (!categorySelect.value) {
+    categorySelect.value = 'news';
+  }
+
+  if (!filterSelect.value) {
+    filterSelect.value = 'all';
+  }
+
+  $('eventDateWrap').hidden =
+    categorySelect.value !== 'events';
+}
+
+// ======================================================
 // الصور - ضغط قوي لضمان الحجم أقل من 1MB
 // ======================================================
 
@@ -39,40 +290,38 @@ let removeExistingImage = false;
 
 function clearImageState() {
 
-selectedImageData = null;
-removeExistingImage = false;
+  selectedImageData = null;
+  removeExistingImage = false;
 
-const input = $('imageFile');
+  const input = $('imageFile');
 
-if (input) {
-input.value = '';
-}
+  if (input) {
+    input.value = '';
+  }
 
-const preview = $('imagePreview');
-const previewImg = $('imagePreviewImg');
+  const preview = $('imagePreview');
+  const previewImg = $('imagePreviewImg');
 
-if (preview) {
-preview.hidden = true;
-}
+  if (preview) {
+    preview.hidden = true;
+  }
 
-if (previewImg) {
-previewImg.removeAttribute('src');
-}
-
+  if (previewImg) {
+    previewImg.removeAttribute('src');
+  }
 }
 
 function showImagePreview(src) {
 
-const preview = $('imagePreview');
-const previewImg = $('imagePreviewImg');
+  const preview = $('imagePreview');
+  const previewImg = $('imagePreviewImg');
 
-if (!preview || !previewImg) {
-return;
-}
+  if (!preview || !previewImg) {
+    return;
+  }
 
-previewImg.src = src;
-preview.hidden = false;
-
+  previewImg.src = src;
+  preview.hidden = false;
 }
 
 // ======================================================
@@ -81,808 +330,989 @@ preview.hidden = false;
 
 async function compressImage(file) {
 
-if (!file || !file.type.startsWith('image/')) {
-throw new Error('الملف المختار ليس صورة.');
+  if (!file || !file.type.startsWith('image/')) {
+    throw new Error('الملف المختار ليس صورة.');
+  }
+
+  const originalUrl =
+    URL.createObjectURL(file);
+
+  try {
+
+    const img = new Image();
+
+    await new Promise(function (resolve, reject) {
+
+      img.onload = resolve;
+
+      img.onerror = function () {
+        reject(
+          new Error('تعذر فتح الصورة.')
+        );
+      };
+
+      img.src = originalUrl;
+
+    });
+
+    const dimensions = [
+      900,
+      800,
+      700,
+      600
+    ];
+
+    const qualities = [
+      0.72,
+      0.62,
+      0.52,
+      0.42,
+      0.32
+    ];
+
+    const MAX_BLOB_SIZE =
+      250 * 1024;
+
+    for (const MAX_SIZE of dimensions) {
+
+      let width = img.naturalWidth;
+      let height = img.naturalHeight;
+
+      if (
+        width > MAX_SIZE ||
+        height > MAX_SIZE
+      ) {
+
+        if (width >= height) {
+
+          height = Math.round(
+            height *
+            (MAX_SIZE / width)
+          );
+
+          width = MAX_SIZE;
+
+        } else {
+
+          width = Math.round(
+            width *
+            (MAX_SIZE / height)
+          );
+
+          height = MAX_SIZE;
+        }
+      }
+
+      const canvas =
+        document.createElement('canvas');
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx =
+        canvas.getContext('2d');
+
+      if (!ctx) {
+        throw new Error(
+          'تعذر تجهيز الصورة.'
+        );
+      }
+
+      ctx.fillStyle = '#ffffff';
+
+      ctx.fillRect(
+        0,
+        0,
+        width,
+        height
+      );
+
+      ctx.drawImage(
+        img,
+        0,
+        0,
+        width,
+        height
+      );
+
+      for (const quality of qualities) {
+
+        const blob =
+          await new Promise(function (resolve) {
+
+            canvas.toBlob(
+              resolve,
+              'image/jpeg',
+              quality
+            );
+
+          });
+
+        if (!blob) {
+          continue;
+        }
+
+        if (
+          blob.size <= MAX_BLOB_SIZE
+        ) {
+
+          const dataUrl =
+            await new Promise(
+              function (resolve, reject) {
+
+                const reader =
+                  new FileReader();
+
+                reader.onload = function () {
+                  resolve(reader.result);
+                };
+
+                reader.onerror = function () {
+                  reject(
+                    new Error(
+                      'تعذر قراءة الصورة.'
+                    )
+                  );
+                };
+
+                reader.readAsDataURL(blob);
+
+              }
+            );
+
+          return dataUrl;
+        }
+      }
+    }
+
+    throw new Error(
+      'الصورة كبيرة جدًا. جرّب صورة أصغر.'
+    );
+
+  } finally {
+
+    URL.revokeObjectURL(
+      originalUrl
+    );
+  }
 }
 
-const originalUrl =
-URL.createObjectURL(file);
-
-try {
-
-const img = new Image();  
-
-await new Promise(function (resolve, reject) {  
-
-  img.onload = resolve;  
-
-  img.onerror = function () {  
-    reject(  
-      new Error('تعذر فتح الصورة.')  
-    );  
-  };  
-
-  img.src = originalUrl;  
-
-});  
-
-
-// أحجام الصورة التي سيتم تجربتها  
-const dimensions = [  
-  900,  
-  800,  
-  700,  
-  600  
-];  
-
-// مستويات الضغط  
-const qualities = [  
-  0.72,  
-  0.62,  
-  0.52,  
-  0.42,  
-  0.32  
-];  
-
-// حجم الصورة الثنائية قبل Base64  
-// حتى تبقى داخل الحد الآمن لـ Firestore  
-const MAX_BLOB_SIZE = 250 * 1024;  
-
-
-for (const MAX_SIZE of dimensions) {  
-
-  let width = img.naturalWidth;  
-  let height = img.naturalHeight;  
-
-
-  if (  
-    width > MAX_SIZE ||  
-    height > MAX_SIZE  
-  ) {  
-
-    if (width >= height) {  
-
-      height = Math.round(  
-        height * (MAX_SIZE / width)  
-      );  
-
-      width = MAX_SIZE;  
-
-    } else {  
-
-      width = Math.round(  
-        width * (MAX_SIZE / height)  
-      );  
-
-      height = MAX_SIZE;  
-
-    }  
-
-  }  
-
-
-  const canvas =  
-    document.createElement('canvas');  
-
-  canvas.width = width;  
-  canvas.height = height;  
-
-
-  const ctx =  
-    canvas.getContext('2d');  
-
-  if (!ctx) {  
-    throw new Error(  
-      'تعذر تجهيز الصورة.'  
-    );  
-  }  
-
-
-  // خلفية بيضاء للصور الشفافة  
-  ctx.fillStyle = '#ffffff';  
-
-  ctx.fillRect(  
-    0,  
-    0,  
-    width,  
-    height  
-  );  
-
-
-  ctx.drawImage(  
-    img,  
-    0,  
-    0,  
-    width,  
-    height  
-  );  
-
-
-  for (const quality of qualities) {  
-
-    const blob =  
-      await new Promise(function (resolve) {  
-
-        canvas.toBlob(  
-          resolve,  
-          'image/jpeg',  
-          quality  
-        );  
-
-      });  
-
-
-    if (!blob) {  
-      continue;  
-    }  
-
-
-    if (  
-      blob.size <= MAX_BLOB_SIZE  
-    ) {  
-
-      const dataUrl =  
-        await new Promise(  
-          function (resolve, reject) {  
-
-            const reader =  
-              new FileReader();  
-
-            reader.onload = function () {  
-              resolve(reader.result);  
-            };  
-
-            reader.onerror = function () {  
-              reject(  
-                new Error(  
-                  'تعذر قراءة الصورة.'  
-                )  
-              );  
-            };  
-
-            reader.readAsDataURL(blob);  
-
-          }  
-        );  
-
-
-      return dataUrl;  
-
-    }  
-
-  }  
-
-}  
-
-
-throw new Error(  
-  'الصورة كبيرة جدًا. جرّب صورة أصغر.'  
-);
-
-} finally {
-
-URL.revokeObjectURL(  
-  originalUrl  
-);
-
-}
-
-}
 // ======================================================
 // اختيار صورة من الجهاز
 // ======================================================
 
-const imageFileInput = $('imageFile');
+const imageFileInput =
+  $('imageFile');
 
 if (imageFileInput) {
 
-imageFileInput.addEventListener('change', async () => {
+  imageFileInput.addEventListener(
+    'change',
+    async () => {
 
-const file = imageFileInput.files?.[0];  
+      const file =
+        imageFileInput.files?.[0];
 
-if (!file) return;  
+      if (!file) return;
 
-if (!file.type.startsWith('image/')) {  
+      if (!file.type.startsWith('image/')) {
 
-  alert('الرجاء اختيار صورة فقط.');  
+        alert(
+          'الرجاء اختيار صورة فقط.'
+        );
 
-  imageFileInput.value = '';  
+        imageFileInput.value = '';
 
-  return;  
-}  
+        return;
+      }
 
-try {  
+      try {
 
-  showMessage('جاري تجهيز الصورة...');  
+        showMessage(
+          'جاري تجهيز الصورة...'
+        );
 
-  selectedImageData =  
-    await compressImage(file);  
+        selectedImageData =
+          await compressImage(file);
 
-  removeExistingImage = false;  
+        removeExistingImage =
+          false;
 
-  showImagePreview(selectedImageData);  
+        showImagePreview(
+          selectedImageData
+        );
 
-  showMessage(  
-    'تم تجهيز الصورة، اضغط حفظ المنشور.',  
-    true  
-  );  
+        showMessage(
+          'تم تجهيز الصورة، اضغط حفظ المنشور.',
+          true
+        );
 
-} catch (e) {  
+      } catch (e) {
 
-  console.error(e);  
+        console.error(e);
 
-  selectedImageData = null;  
+        selectedImageData =
+          null;
 
-  imageFileInput.value = '';  
+        imageFileInput.value = '';
 
-  alert(  
-    'تعذر تجهيز الصورة. جرّب صورة أصغر.'  
-  );  
-
-}
-
-});
-
+        alert(
+          'تعذر تجهيز الصورة. جرّب صورة أصغر.'
+        );
+      }
+    }
+  );
 }
 
 // ======================================================
 // إزالة الصورة
 // ======================================================
 
-const removeImageButton = $('removeImage');
+const removeImageButton =
+  $('removeImage');
 
 if (removeImageButton) {
 
-removeImageButton.addEventListener('click', () => {
+  removeImageButton.addEventListener(
+    'click',
+    () => {
 
-selectedImageData = null;  
+      selectedImageData =
+        null;
 
-removeExistingImage = true;  
+      removeExistingImage =
+        true;
 
-const input = $('imageFile');  
+      const input =
+        $('imageFile');
 
-if (input) {  
-  input.value = '';  
-}  
+      if (input) {
+        input.value = '';
+      }
 
-const preview = $('imagePreview');  
+      const preview =
+        $('imagePreview');
 
-if (preview) {  
-  preview.hidden = true;  
-}  
+      if (preview) {
+        preview.hidden = true;
+      }
 
-const previewImg = $('imagePreviewImg');  
+      const previewImg =
+        $('imagePreviewImg');
 
-if (previewImg) {  
-  previewImg.removeAttribute('src');  
-}  
+      if (previewImg) {
+        previewImg.removeAttribute('src');
+      }
 
-showMessage(  
-  'تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.',  
-  true  
-);
-
-});
-
+      showMessage(
+        'تمت إزالة الصورة. احفظ المنشور لتأكيد التغيير.',
+        true
+      );
+    }
+  );
 }
 
 // ======================================================
 // الرسائل والنموذج
 // ======================================================
 
-function showMessage(text, ok = false){
+function showMessage(
+  text,
+  ok = false
+) {
 
-const el = $('formMessage');
+  const el =
+    $('formMessage');
 
-if (!el) return;
+  if (!el) return;
 
-el.textContent = text;
+  el.textContent =
+    text;
 
-el.className =
-'form-message ' +
-(ok ? 'success' : 'error');
+  el.className =
+    'form-message ' +
+    (ok ? 'success' : 'error');
 }
 
-function resetForm(){
+function resetForm() {
 
-$('postForm').reset();
+  $('postForm').reset();
 
-$('editingId').value = '';
+  $('editingId').value = '';
 
-$('formTitle').textContent =
-'إضافة منشور جديد';
+  $('formTitle').textContent =
+    'إضافة منشور جديد';
 
-$('saveBtn').textContent =
-'حفظ المنشور';
+  $('saveBtn').textContent =
+    'حفظ المنشور';
 
-$('cancelEdit').hidden = true;
+  $('cancelEdit').hidden =
+    true;
 
-$('eventDateWrap').hidden =
-$('category').value !== 'events';
+  $('eventDateWrap').hidden =
+    $('category').value !== 'events';
 
-clearImageState();
+  clearImageState();
 
-showMessage('');
+  showMessage('');
+
+  updateCategorySelectors();
 }
 
-function dateText(d){
+function dateText(d) {
 
-return d?.toDate
-? d.toDate().toLocaleString('ar-IQ')
-: d || '';
+  return d?.toDate
+    ? d.toDate().toLocaleString('ar-IQ')
+    : d || '';
+}
 
+// ======================================================
+// الحصول على إعداد قسم
+// ======================================================
+
+function getCategoryConfig(key) {
+
+  if (ADMIN_CATEGORIES[key]) {
+    return ADMIN_CATEGORIES[key];
+  }
+
+  if (CUSTOM_CATEGORIES[key]) {
+    return CUSTOM_CATEGORIES[key];
+  }
+
+  return null;
+}
+
+// ======================================================
+// هل القسم ديناميكي؟
+// ======================================================
+
+function isCustomCategory(key) {
+
+  return Boolean(
+    CUSTOM_CATEGORIES[key]
+  );
 }
 
 // ======================================================
 // المنشورات
 // ======================================================
 
-function postItem(doc){
+function postItem(doc, key) {
 
-const d = doc.data();
+  const d =
+    doc.data();
 
-const key =
-d.category || 'news';
+  const cfg =
+    getCategoryConfig(key) ||
+    ADMIN_CATEGORIES.news;
 
-const cfg =
-ADMIN_CATEGORIES[key] ||
-ADMIN_CATEGORIES.news;
+  const image =
+    d.imageData ||
+    d.imageUrl ||
+    '';
 
-const image =
-d.imageData ||
-d.imageUrl ||
-'';
+  return `
+    <div class="admin-post">
 
-return `
-<div class="admin-post">
+      <div>
 
-<div>  
+        ${
+          image
+            ? `
+              <img
+                src="${esc(image)}"
+                alt=""
+                loading="lazy"
+                style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;"
+              >
+            `
+            : ''
+        }
 
-    ${image ? `  
-      <img  
-        src="${esc(image)}"  
-        alt=""  
-        loading="lazy"  
-        style="width:90px;height:65px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;"  
-      >  
-    ` : ''}  
+        <div class="post-meta">
 
-    <div class="post-meta">  
+          ${esc(cfg.icon)}
+          ${esc(cfg.title)}
 
-      ${cfg.icon} ${cfg.title}  
+          ${
+            d.createdAt
+              ? '• ' +
+                esc(dateText(d.createdAt))
+              : ''
+          }
 
-      ${d.createdAt  
-        ? '• ' + esc(dateText(d.createdAt))  
-        : ''}  
+        </div>
 
-    </div>  
+        <h4>
+          ${esc(d.title || 'بدون عنوان')}
+        </h4>
 
-    <h4>  
-      ${esc(d.title || 'بدون عنوان')}  
-    </h4>  
+        <p>
+          ${esc(d.content || '')}
+        </p>
 
-    <p>  
-      ${esc(d.content || '')}  
-    </p>  
+      </div>
 
-  </div>  
+      <div class="admin-post-actions">
 
-  <div class="admin-post-actions">  
+        <button
+          type="button"
+          class="btn mini edit-post"
+          data-id="${esc(doc.id)}"
+          data-category="${esc(key)}"
+        >
+          تعديل
+        </button>
 
-    <button  
-      type="button"  
-      class="btn mini edit-post"  
-      data-id="${doc.id}"  
-      data-category="${key}"  
-    >  
-      تعديل  
-    </button>  
+        <button
+          type="button"
+          class="btn mini danger delete-post"
+          data-id="${esc(doc.id)}"
+          data-category="${esc(key)}"
+        >
+          حذف
+        </button>
 
-    <button  
-      type="button"  
-      class="btn mini danger delete-post"  
-      data-id="${doc.id}"  
-      data-category="${key}"  
-    >  
-      حذف  
-    </button>  
+      </div>
 
-  </div>  
-
-</div>
-
-`;
+    </div>
+  `;
 }
 
-async function loadPosts(){
+// ======================================================
+// تحميل المنشورات
+// ======================================================
 
-const box = $('postsList');
+async function loadPosts() {
 
-const filter =
-$('filterCategory').value;
+  const box =
+    $('postsList');
 
-box.innerHTML =
-'<div class="empty-state">جاري التحميل...</div>';
+  if (!box) return;
 
-try {
+  const filter =
+    $('filterCategory').value;
 
-let all = [];  
+  box.innerHTML =
+    '<div class="empty-state">جاري التحميل...</div>';
 
-const keys =  
-  (  
-    filter === 'all'  
-      ? Object.keys(ADMIN_CATEGORIES)  
-      : [filter]  
-  ).filter(canManage);  
+  try {
 
-for (const key of keys) {  
+    let all = [];
 
-  const snap =  
-    await db  
-      .collection(  
-        ADMIN_CATEGORIES[key].collection  
-      )  
-      .orderBy('createdAt', 'desc')  
-      .get();  
+    // --------------------------------------------------
+    // الأقسام الأساسية
+    // --------------------------------------------------
 
-  snap.forEach(doc => {  
+    const baseKeys =
+      (
+        filter === 'all'
+          ? Object.keys(ADMIN_CATEGORIES)
+          : ADMIN_CATEGORIES[filter]
+            ? [filter]
+            : []
+      ).filter(canManage);
 
-    all.push({  
-      doc,  
-      key  
-    });  
+    for (const key of baseKeys) {
 
-  });  
+      const snap =
+        await db
+          .collection(
+            ADMIN_CATEGORIES[key].collection
+          )
+          .orderBy(
+            'createdAt',
+            'desc'
+          )
+          .get();
 
-}  
+      snap.forEach(doc => {
 
-all.sort((a, b) =>  
-  (  
-    b.doc.data().createdAt?.toMillis?.() || 0  
-  ) -  
-  (  
-    a.doc.data().createdAt?.toMillis?.() || 0  
-  )  
-);  
+        all.push({
+          doc,
+          key
+        });
 
-box.innerHTML =  
-  all.length  
-    ? all.map(x => postItem(x.doc)).join('')  
-    : '<div class="empty-state">لا توجد منشورات حاليًا</div>';
+      });
+    }
 
-} catch (e) {
+    // --------------------------------------------------
+    // الأقسام الجديدة
+    // المدير فقط
+    // --------------------------------------------------
 
-console.error(e);  
+    if (
+      currentUserRole === 'admin' &&
+      (
+        filter === 'all' ||
+        isCustomCategory(filter)
+      )
+    ) {
 
-box.innerHTML =  
-  '<div class="empty-state">تعذر تحميل المنشورات.</div>';
+      let customSnap =
+        await db
+          .collection('siteCategoryPosts')
+          .orderBy(
+            'createdAt',
+            'desc'
+          )
+          .get();
 
-}
+      customSnap.forEach(doc => {
 
+        const data =
+          doc.data();
+
+        const key =
+          data.category ||
+          (
+            data.categoryId
+              ? 'custom:' +
+                data.categoryId
+              : ''
+          );
+
+        if (
+          !key ||
+          !CUSTOM_CATEGORIES[key]
+        ) {
+          return;
+        }
+
+        if (
+          filter !== 'all' &&
+          filter !== key
+        ) {
+          return;
+        }
+
+        all.push({
+          doc,
+          key
+        });
+
+      });
+    }
+
+    // --------------------------------------------------
+    // ترتيب الكل حسب التاريخ
+    // --------------------------------------------------
+
+    all.sort((a, b) =>
+      (
+        b.doc.data()
+          .createdAt
+          ?.toMillis?.() || 0
+      ) -
+      (
+        a.doc.data()
+          .createdAt
+          ?.toMillis?.() || 0
+      )
+    );
+
+    box.innerHTML =
+      all.length
+        ? all
+            .map(x =>
+              postItem(
+                x.doc,
+                x.key
+              )
+            )
+            .join('')
+        : `
+          <div class="empty-state">
+            لا توجد منشورات حاليًا
+          </div>
+        `;
+
+  } catch (e) {
+
+    console.error(e);
+
+    box.innerHTML =
+      '<div class="empty-state">' +
+      'تعذر تحميل المنشورات.' +
+      '</div>';
+  }
 }
 
 // ======================================================
 // تعديل منشور
 // ======================================================
 
-async function loadForEdit(id, key){
+async function loadForEdit(
+  id,
+  key
+) {
 
-try {
+  try {
 
-const snap =  
-  await db  
-    .collection(  
-      ADMIN_CATEGORIES[key].collection  
-    )  
-    .doc(id)  
-    .get();  
+    const cfg =
+      getCategoryConfig(key);
 
-if (!snap.exists) return;  
+    if (!cfg) {
 
-const d =  
-  snap.data();  
+      alert(
+        'تعذر العثور على القسم.'
+      );
 
-$('editingId').value =  
-  id;  
+      return;
+    }
 
-$('category').value =  
-  key;  
+    const snap =
+      await db
+        .collection(
+          cfg.collection
+        )
+        .doc(id)
+        .get();
 
-$('title').value =  
-  d.title || '';  
+    if (!snap.exists) {
+      return;
+    }
 
-$('content').value =  
-  d.content || '';  
+    const d =
+      snap.data();
 
-$('eventDate').value =  
-  d.eventDate || '';  
+    $('editingId').value =
+      id;
 
-$('eventDateWrap').hidden =  
-  key !== 'events';  
+    $('category').value =
+      key;
 
-$('formTitle').textContent =  
-  'تعديل المنشور';  
+    $('title').value =
+      d.title || '';
 
-$('saveBtn').textContent =  
-  'حفظ التعديلات';  
+    $('content').value =
+      d.content || '';
 
-$('cancelEdit').hidden =  
-  false;  
+    $('eventDate').value =
+      d.eventDate || '';
 
-selectedImageData =  
-  null;  
+    $('eventDateWrap').hidden =
+      key !== 'events';
 
-removeExistingImage =  
-  false;  
+    $('formTitle').textContent =
+      'تعديل المنشور';
 
-const existingImage =  
-  d.imageData ||  
-  d.imageUrl ||  
-  '';  
+    $('saveBtn').textContent =
+      'حفظ التعديلات';
 
-if (existingImage) {  
+    $('cancelEdit').hidden =
+      false;
 
-  showImagePreview(  
-    existingImage  
-  );  
+    selectedImageData =
+      null;
 
-} else {  
+    removeExistingImage =
+      false;
 
-  const preview =  
-    $('imagePreview');  
+    const existingImage =
+      d.imageData ||
+      d.imageUrl ||
+      '';
 
-  if (preview) {  
-    preview.hidden = true;  
-  }  
+    if (existingImage) {
 
-}  
+      showImagePreview(
+        existingImage
+      );
 
-window.scrollTo({  
-  top:  
-    document.querySelector(  
-      '.admin-section'  
-    ).offsetTop - 90,  
-  behavior: 'smooth'  
-});
+    } else {
 
-} catch (e) {
+      const preview =
+        $('imagePreview');
 
-console.error(e);  
+      if (preview) {
+        preview.hidden = true;
+      }
+    }
 
-alert(  
-  'تعذر فتح المنشور للتعديل.'  
-);
+    // --------------------------------------------------
+    // منع تغيير القسم أثناء التعديل
+    // --------------------------------------------------
 
-}
+    $('category').disabled =
+      true;
 
+    window.scrollTo({
+      top:
+        document.querySelector(
+          '.admin-section'
+        ).offsetTop - 90,
+
+      behavior: 'smooth'
+    });
+
+  } catch (e) {
+
+    console.error(e);
+
+    alert(
+      'تعذر فتح المنشور للتعديل.'
+    );
+  }
 }
 
 // ======================================================
 // حذف منشور
 // ======================================================
 
-async function deletePost(id, key){
-
-if (
-!confirm(
-'هل أنت متأكد من حذف هذا المنشور؟'
-)
+async function deletePost(
+  id,
+  key
 ) {
-return;
-}
 
-try {
+  if (
+    !confirm(
+      'هل أنت متأكد من حذف هذا المنشور؟'
+    )
+  ) {
+    return;
+  }
 
-await db  
-  .collection(  
-    ADMIN_CATEGORIES[key].collection  
-  )  
-  .doc(id)  
-  .delete();  
+  try {
 
-await loadPosts();
+    const cfg =
+      getCategoryConfig(key);
 
-} catch (e) {
+    if (!cfg) {
 
-console.error(e);  
+      alert(
+        'تعذر العثور على القسم.'
+      );
 
-alert(  
-  'تعذر حذف المنشور.'  
-);
+      return;
+    }
 
-}
+    await db
+      .collection(
+        cfg.collection
+      )
+      .doc(id)
+      .delete();
 
+    await loadPosts();
+
+    if (
+      typeof refreshDashboard ===
+      'function'
+    ) {
+      await refreshDashboard();
+      }
+
+  } catch (e) {
+
+    console.error(e);
+
+    alert(
+      'تعذر حذف المنشور.'
+    );
+  }
 }
 
 // ======================================================
 // الاستفسارات
 // ======================================================
 
-async function loadInquiries(){
+async function loadInquiries() {
 
-const box =
-$('inquiriesList');
+  const box =
+    $('inquiriesList');
 
-box.innerHTML =
-'<div class="empty-state">جاري تحميل الاستفسارات...</div>';
+  box.innerHTML =
+    '<div class="empty-state">جاري تحميل الاستفسارات...</div>';
 
-try {
+  try {
 
-const snap =  
-  await db  
-    .collection('inquiries')  
-    .get();  
+    const snap =
+      await db
+        .collection('inquiries')
+        .get();
 
-const rows =  
-  snap.docs.sort((a, b) =>  
-    (  
-      b.data().createdAt?.toMillis?.() || 0  
-    ) -  
-    (  
-      a.data().createdAt?.toMillis?.() || 0  
-    )  
-  );  
+    const rows =
+      snap.docs.sort((a, b) =>
+        (
+          b.data()
+            .createdAt
+            ?.toMillis?.() || 0
+        ) -
+        (
+          a.data()
+            .createdAt
+            ?.toMillis?.() || 0
+        )
+      );
 
-if (!rows.length) {  
+    if (!rows.length) {
 
-  box.innerHTML =  
-    '<div class="empty-state">لا توجد استفسارات حاليًا.</div>';  
+      box.innerHTML =
+        '<div class="empty-state">' +
+        'لا توجد استفسارات حاليًا.' +
+        '</div>';
 
-  return;  
-}  
+      return;
+    }
 
-const unseen =  
-  rows.filter(doc =>  
-    doc.data().adminSeen !== true &&  
-    doc.data().status === 'new'  
-  );  
+    const unseen =
+      rows.filter(doc =>
+        doc.data().adminSeen !== true &&
+        doc.data().status === 'new'
+      );
 
-if (unseen.length) {  
+    if (unseen.length) {
 
-  await Promise.all(  
-    unseen.map(doc =>  
-      db  
-        .collection('inquiries')  
-        .doc(doc.id)  
-        .update({  
-          adminSeen: true  
-        })  
-    )  
-  );  
+      await Promise.all(
+        unseen.map(doc =>
+          db
+            .collection('inquiries')
+            .doc(doc.id)
+            .update({
+              adminSeen: true
+            })
+        )
+      );
+    }
 
-}  
+    const users = {};
 
-const users = {};  
+    for (const doc of rows) {
 
-for (const doc of rows) {  
+      const uid =
+        doc.data().userId;
 
-  const uid =  
-    doc.data().userId;  
+      if (uid && !users[uid]) {
 
-  if (uid && !users[uid]) {  
+        const u =
+          await db
+            .collection('users')
+            .doc(uid)
+            .get();
 
-    const u =  
-      await db  
-        .collection('users')  
-        .doc(uid)  
-        .get();  
+        users[uid] =
+          u.exists
+            ? u.data()
+            : {};
+      }
+    }
 
-    users[uid] =  
-      u.exists  
-        ? u.data()  
-        : {};  
+    box.innerHTML =
+      rows.map(doc => {
 
-  }  
+        const d =
+          doc.data();
 
-}  
+        const u =
+          users[d.userId] || {};
 
-box.innerHTML =  
-  rows.map(doc => {  
+        return `
+          <article
+            class="admin-inquiry"
+            data-inquiry-id="${doc.id}"
+          >
 
-    const d =  
-      doc.data();  
+            <div>
 
-    const u =  
-      users[d.userId] || {};  
+              <div class="post-meta">
 
-    return `  
-      <article  
-        class="admin-inquiry"  
-        data-inquiry-id="${doc.id}"  
-      >  
+                ${esc(d.type)}
 
-        <div>  
+                ${
+                  d.createdAt
+                    ? '• ' +
+                      esc(
+                        dateText(
+                          d.createdAt
+                        )
+                      )
+                    : ''
+                }
 
-          <div class="post-meta">  
+              </div>
 
-            ${esc(d.type)}  
+              <h4>
+                ${esc(d.title)}
+              </h4>
 
-            ${  
-              d.createdAt  
-                ? '• ' +  
-                  esc(dateText(d.createdAt))  
-                : ''  
-            }  
+              <p>
+                ${esc(d.message)}
+              </p>
 
-          </div>  
+              <small>
+                المستخدم:
+                ${esc(
+                  u.fullName ||
+                  'عضو'
+                )}
+                —
+                ${esc(u.email || '')}
+              </small>
 
-          <h4>  
-            ${esc(d.title)}  
-          </h4>  
+              ${
+                d.reply
+                  ? `
+                    <div class="inquiry-reply">
 
-          <p>  
-            ${esc(d.message)}  
-          </p>  
+                      <strong>
+                        الرد الحالي
+                      </strong>
 
-          <small>  
-            المستخدم:  
-            ${esc(u.fullName || 'عضو')}  
-            —  
-            ${esc(u.email || '')}  
-          </small>  
+                      <p>
+                        ${esc(d.reply)}
+                      </p>
 
-          ${  
-            d.reply  
-              ? `  
-                <div class="inquiry-reply">  
+                    </div>
+                  `
+                  : ''
+              }
 
-                  <strong>  
-                    الرد الحالي  
-                  </strong>  
+            </div>
 
-                  <p>  
-                    ${esc(d.reply)}  
-                  </p>  
+            <div class="inquiry-actions">
 
-                </div>  
-              `  
-              : ''  
-          }  
+              <textarea
+                class="reply-input"
+                rows="4"
+                placeholder="اكتب رد الفريق..."
+              >${esc(d.reply || '')}</textarea>
 
-        </div>  
+              <button
+                class="btn primary reply-inquiry"
+                data-id="${doc.id}"
+              >
+                ${
+                  d.reply
+                    ? 'تحديث الرد'
+                    : 'إرسال الرد'
+                }
+              </button>
 
-        <div class="inquiry-actions">  
+              <button
+                class="btn mini danger delete-inquiry"
+                data-id="${doc.id}"
+              >
+                حذف
+              </button>
 
-          <textarea  
-            class="reply-input"  
-            rows="4"  
-            placeholder="اكتب رد الفريق..."  
-          >${esc(d.reply || '')}</textarea>  
+            </div>
 
-          <button  
-            class="btn primary reply-inquiry"  
-            data-id="${doc.id}"  
-          >  
-            ${  
-              d.reply  
-                ? 'تحديث الرد'  
-                : 'إرسال الرد'  
-            }  
-          </button>  
+          </article>
+        `;
 
-          <button  
-            class="btn mini danger delete-inquiry"  
-            data-id="${doc.id}"  
-          >  
-            حذف  
-          </button>  
+      }).join('');
 
-        </div>  
+  } catch (e) {
 
-      </article>  
-    `;  
+    console.error(e);
 
-  }).join('');
-
-} catch (e) {
-
-console.error(e);  
-
-box.innerHTML =  
-  '<div class="empty-state">تعذر تحميل الاستفسارات.</div>';
-
-}
-
+    box.innerHTML =
+      '<div class="empty-state">' +
+      'تعذر تحميل الاستفسارات.' +
+      '</div>';
+  }
 }
 
 // ======================================================
@@ -890,28 +1320,28 @@ box.innerHTML =
 // ======================================================
 
 $('category').addEventListener(
-'change',
-() => {
+  'change',
+  () => {
 
-$('eventDateWrap').hidden =  
-  $('category').value !== 'events';
+    $('eventDateWrap').hidden =
+      $('category').value !== 'events';
 
-}
+  }
 );
 
 $('filterCategory').addEventListener(
-'change',
-loadPosts
+  'change',
+  loadPosts
 );
 
 $('cancelEdit').addEventListener(
-'click',
-resetForm
+  'click',
+  resetForm
 );
 
 $('refreshInquiries').addEventListener(
-'click',
-loadInquiries
+  'click',
+  loadInquiries
 );
 
 // ======================================================
@@ -919,30 +1349,31 @@ loadInquiries
 // ======================================================
 
 $('postsList').addEventListener(
-'click',
-e => {
+  'click',
+  e => {
 
-const edit =  
-  e.target.closest('.edit-post');  
+    const edit =
+      e.target.closest('.edit-post');
 
-const del =  
-  e.target.closest('.delete-post');  
+    const del =
+      e.target.closest('.delete-post');
 
-if (edit) {  
-  loadForEdit(  
-    edit.dataset.id,  
-    edit.dataset.category  
-  );  
-}  
+    if (edit) {
 
-if (del) {  
-  deletePost(  
-    del.dataset.id,  
-    del.dataset.category  
-  );  
-}
+      loadForEdit(
+        edit.dataset.id,
+        edit.dataset.category
+      );
+    }
 
-}
+    if (del) {
+
+      deletePost(
+        del.dataset.id,
+        del.dataset.category
+      );
+    }
+  }
 );
 
 // ======================================================
@@ -950,98 +1381,113 @@ if (del) {
 // ======================================================
 
 $('inquiriesList').addEventListener(
-'click',
-async e => {
+  'click',
+  async e => {
 
-const reply =  
-  e.target.closest('.reply-inquiry');  
+    const reply =
+      e.target.closest(
+        '.reply-inquiry'
+      );
 
-const del =  
-  e.target.closest('.delete-inquiry');  
+    const del =
+      e.target.closest(
+        '.delete-inquiry'
+      );
 
-if (reply) {  
+    if (reply) {
 
-  const card =  
-    reply.closest('.admin-inquiry');  
+      const card =
+        reply.closest(
+          '.admin-inquiry'
+        );
 
-  const text =  
-    card  
-      .querySelector('.reply-input')  
-      .value  
-      .trim();  
+      const text =
+        card
+          .querySelector(
+            '.reply-input'
+          )
+          .value
+          .trim();
 
-  if (!text) {  
+      if (!text) {
 
-    alert('اكتب الرد أولًا.');  
+        alert(
+          'اكتب الرد أولًا.'
+        );
 
-    return;  
-  }  
+        return;
+      }
 
-  reply.disabled = true;  
+      reply.disabled =
+        true;
 
-  try {  
+      try {
 
-    await db  
-      .collection('inquiries')  
-      .doc(reply.dataset.id)  
-      .update({  
-        reply: text,  
-        repliedAt:  
-          firebase.firestore.FieldValue  
-            .serverTimestamp(),  
-        status: 'replied'  
-      });  
+        await db
+          .collection('inquiries')
+          .doc(reply.dataset.id)
+          .update({
 
-    await loadInquiries();  
+            reply: text,
 
-  } catch (err) {  
+            repliedAt:
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp(),
 
-    console.error(err);  
+            status:
+              'replied'
 
-    alert(  
-      'تعذر حفظ الرد.'  
-    );  
+          });
 
-  } finally {  
+        await loadInquiries();
 
-    reply.disabled = false;  
+      } catch (err) {
 
-  }  
+        console.error(err);
 
-}  
+        alert(
+          'تعذر حفظ الرد.'
+        );
 
-if (del) {  
+      } finally {
 
-  if (  
-    !confirm(  
-      'حذف الاستفسار نهائيًا؟'  
-    )  
-  ) {  
-    return;  
-  }  
+        reply.disabled =
+          false;
+      }
+    }
 
-  try {  
+    if (del) {
 
-    await db  
-      .collection('inquiries')  
-      .doc(del.dataset.id)  
-      .delete();  
+      if (
+        !confirm(
+          'حذف الاستفسار نهائيًا؟'
+        )
+      ) {
+        return;
+      }
 
-    await loadInquiries();  
+      try {
 
-  } catch (err) {  
+        await db
+          .collection('inquiries')
+          .doc(
+            del.dataset.id
+          )
+          .delete();
 
-    console.error(err);  
+        await loadInquiries();
 
-    alert(  
-      'تعذر حذف الاستفسار.'  
-    );  
+      } catch (err) {
 
-  }  
+        console.error(err);
 
-}
-
-}
+        alert(
+          'تعذر حذف الاستفسار.'
+        );
+      }
+    }
+  }
 );
 
 // ======================================================
@@ -1049,244 +1495,312 @@ if (del) {
 // ======================================================
 
 $('postForm').addEventListener(
-'submit',
-async e => {
+  'submit',
+  async e => {
 
-e.preventDefault();  
+    e.preventDefault();
 
-showMessage(  
-  'جاري الحفظ...'  
-);  
+    showMessage(
+      'جاري الحفظ...'
+    );
 
-const key =  
-  $('category').value;  
+    const key =
+      $('category').value;
 
-const cfg =  
-  ADMIN_CATEGORIES[key];  
+    const cfg =
+      getCategoryConfig(key);
 
-const id =  
-  $('editingId').value.trim();  
+    const id =
+      $('editingId').value.trim();
 
-if (!canManage(key)) {  
+    if (!cfg) {
 
-  showMessage(  
-    'ليست لديك صلاحية لإدارة هذا القسم.'  
-  );  
+      showMessage(
+        'تعذر العثور على القسم.'
+      );
 
-  return;  
-}  
+      return;
+    }
 
-const data = {  
+    // --------------------------------------------------
+    // الصلاحيات
+    // --------------------------------------------------
 
-  title:  
-    $('title').value.trim(),  
+    if (
+      isCustomCategory(key)
+    ) {
 
-  content:  
-    $('content').value.trim(),  
+      if (
+        currentUserRole !== 'admin'
+      ) {
 
-  category:  
-    key,  
+        showMessage(
+          'الأقسام الجديدة متاحة للمدير الكامل فقط.'
+        );
 
-  updatedAt:  
-    firebase.firestore.FieldValue  
-      .serverTimestamp()  
+        return;
+      }
 
-};  
+    } else if (!canManage(key)) {
 
-if (  
-  key === 'events' &&  
-  $('eventDate').value  
-) {  
-  data.eventDate =  
-    $('eventDate').value;  
+      showMessage(
+        'ليست لديك صلاحية لإدارة هذا القسم.'
+      );
 
-} else if (key === 'events') {  
+      return;
+    }
 
-  data.eventDate = '';  
+    const data = {
 
-}  
+      title:
+        $('title').value.trim(),
 
-try {  
+      content:
+        $('content').value.trim(),
 
- // ======================================================
-// حفظ الصورة
-// ======================================================
+      category:
+        key,
 
-// صورة جديدة
-if (selectedImageData) {
+      updatedAt:
+        firebase.firestore.FieldValue
+          .serverTimestamp()
 
-  data.imageData =
-    selectedImageData;
+    };
 
-  // نحذف imageUrl القديمة فقط عند تعديل منشور موجود
-  if (id) {
-    data.imageUrl =
-      firebase.firestore.FieldValue
-        .delete();
+    // --------------------------------------------------
+    // بيانات القسم الجديد
+    // --------------------------------------------------
+
+    if (
+      isCustomCategory(key)
+    ) {
+
+      data.categoryId =
+        cfg.categoryId;
+
+      data.categoryTitle =
+        cfg.title;
+
+    }
+
+    // --------------------------------------------------
+    // تاريخ الفعالية
+    // --------------------------------------------------
+
+    if (
+      key === 'events' &&
+      $('eventDate').value
+    ) {
+
+      data.eventDate =
+        $('eventDate').value;
+
+    } else if (
+      key === 'events'
+    ) {
+
+      data.eventDate =
+        '';
+
+    }
+
+    try {
+
+      // =================================================
+      // حفظ الصورة
+      // =================================================
+
+      if (selectedImageData) {
+
+        data.imageData =
+          selectedImageData;
+
+        if (id) {
+
+          data.imageUrl =
+            firebase.firestore
+              .FieldValue
+              .delete();
+        }
+
+      } else if (
+        id &&
+        removeExistingImage
+      ) {
+
+        data.imageData =
+          firebase.firestore
+            .FieldValue
+            .delete();
+
+        data.imageUrl =
+          firebase.firestore
+            .FieldValue
+            .delete();
+      }
+
+      // =================================================
+      // الحفظ في المجموعة الصحيحة
+      // =================================================
+
+      if (id) {
+
+        await db
+          .collection(
+            cfg.collection
+          )
+          .doc(id)
+          .update(data);
+
+      } else {
+
+        data.createdAt =
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp();
+
+        data.authorId =
+          currentUser.uid;
+
+        await db
+          .collection(
+            cfg.collection
+          )
+          .add(data);
+      }
+
+      showMessage(
+        id
+          ? 'تم تعديل المنشور بنجاح.'
+          : 'تمت إضافة المنشور بنجاح.',
+        true
+      );
+
+      resetForm();
+
+      await loadPosts();
+
+      if (
+        typeof refreshDashboard ===
+        'function'
+      ) {
+
+        await refreshDashboard();
+      }
+
+    } catch (err) {
+
+      console.error(
+        'SAVE POST ERROR:',
+        err
+      );
+
+      const code =
+        err?.code || '';
+
+      const message =
+        String(
+          err?.message || ''
+        );
+
+      if (
+        code ===
+          'resource-exhausted' ||
+        message
+          .toLowerCase()
+          .includes('1 mib') ||
+        message
+          .toLowerCase()
+          .includes('maximum')
+      ) {
+
+        showMessage(
+          'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'
+        );
+
+      } else if (
+        code ===
+        'permission-denied'
+      ) {
+
+        showMessage(
+          'لا توجد صلاحية لحفظ المنشور في هذا القسم.'
+        );
+
+      } else if (
+        code ===
+        'failed-precondition'
+      ) {
+
+        showMessage(
+          'يوجد إعداد ناقص في Firestore.'
+        );
+
+      } else {
+
+        showMessage(
+          'خطأ الحفظ: ' +
+          (
+            message ||
+            code ||
+            'خطأ غير معروف'
+          )
+        );
+      }
+
+      alert(
+        'خطأ الحفظ الحقيقي:\n\n' +
+        (
+          message ||
+          code ||
+          'خطأ غير معروف'
+        )
+      );
+    }
   }
-
-}
-
-// إزالة الصورة الموجودة
-else if (
-  id &&
-  removeExistingImage
-) {
-
-  data.imageData =
-    firebase.firestore.FieldValue
-      .delete();
-
-  data.imageUrl =
-    firebase.firestore.FieldValue
-      .delete();
-
-}
-  // منشور جديد أو تعديل  
-  if (id) {  
-
-    await db  
-      .collection(cfg.collection)  
-      .doc(id)  
-      .update(data);  
-
-  } else {  
-
-    data.createdAt =  
-      firebase.firestore.FieldValue  
-        .serverTimestamp();  
-
-    data.authorId =  
-      currentUser.uid;  
-
-    await db  
-      .collection(cfg.collection)  
-      .add(data);  
-
-  }  
-
-  showMessage(  
-    id  
-      ? 'تم تعديل المنشور بنجاح.'  
-      : 'تمت إضافة المنشور بنجاح.',  
-    true  
-  );  
-
-  resetForm();  
-
-  await loadPosts();  
-
-} catch (err) {
-
-console.error(
-'SAVE POST ERROR:',
-err
-);
-
-const code =  
-    err?.code || '';  
-
-  const message =  
-    String(  
-      err?.message || ''  
-    );  
-
-  if (  
-    code === 'resource-exhausted' ||  
-    message  
-      .toLowerCase()  
-      .includes('1 mib') ||  
-    message  
-      .toLowerCase()  
-      .includes('maximum')  
-  ) {  
-
-    showMessage(  
-      'الصورة كبيرة جدًا. اختر صورة أصغر وحاول مرة أخرى.'  
-    );  
-
-  } else if (  
-    code === 'permission-denied'  
-  ) {  
-
-    showMessage(  
-      'لا توجد صلاحية لحفظ المنشور في هذا القسم.'  
-    );  
-
-  } else if (  
-    code === 'failed-precondition'  
-  ) {  
-
-    showMessage(  
-      'يوجد إعداد ناقص في Firestore.'  
-    );  
-
-  } else {  
-
-    showMessage(  
-      'خطأ الحفظ: ' +  
-      (  
-        message ||  
-        code ||  
-        'خطأ غير معروف'  
-      )  
-    );  
-
-  }  
-
-  alert(  
-    'خطأ الحفظ الحقيقي:\n\n' +  
-    (  
-      message ||  
-      code ||  
-      'خطأ غير معروف'  
-    )  
-  );  
-
-}
-
-}
 );
 
 // ======================================================
-// تسجيل الخروج - يرجع للرئيسية
+// تسجيل الخروج
 // ======================================================
 
 $('logoutBtn').addEventListener(
-'click',
-async () => {
+  'click',
+  async () => {
 
-await auth.signOut();  
+    await auth.signOut();
 
-location.href =  
-  'index.html';
-
-}
+    location.href =
+      'index.html';
+  }
 );
 
 // ======================================================
 // إشعارات الإدارة
 // ======================================================
 
-function updateAdminNotificationBadge(count){
+function updateAdminNotificationBadge(
+  count
+) {
 
-const b =
-document.getElementById(
-'adminNotificationBadge'
-);
+  const b =
+    document.getElementById(
+      'adminNotificationBadge'
+    );
 
-if (!b) return;
+  if (!b) return;
 
-b.textContent =
-count > 0
-? '🔔 ' + count + ' استفسار جديد'
-: '🔔 لا توجد استفسارات جديدة';
+  b.textContent =
+    count > 0
+      ? '🔔 ' +
+        count +
+        ' استفسار جديد'
+      : '🔔 لا توجد استفسارات جديدة';
 
-b.classList.toggle(
-'has-alert',
-count > 0
-);
-
+  b.classList.toggle(
+    'has-alert',
+    count > 0
+  );
 }
 
 // ======================================================
@@ -1294,262 +1808,273 @@ count > 0
 // ======================================================
 
 auth.onAuthStateChanged(
-async user => {
-
-console.log(  
-  'ADMIN AUTH CHECK:',  
-  user  
-    ? user.uid  
-    : 'NO USER'  
-);  
-
-if (!user) {  
-
-  location.href =  
-    'login.html?next=admin.html';  
-
-  return;  
-}  
-
-currentUser =  
-  user;  
-
-try {  
-
-  console.log(  
-    'ADMIN: جاري قراءة بيانات المستخدم...'  
-  );  
-
-  const doc =  
-    await db  
-      .collection('users')  
-      .doc(user.uid)  
-      .get();  
-
-  console.log(  
-    'ADMIN USER DOC:',  
-    doc.exists  
-      ? doc.data()  
-      : 'DOCUMENT NOT FOUND'  
-  );  
-
-  if (!doc.exists) {  
-
-    $('adminGate').innerHTML =  
-      'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +  
-      '<a class="btn primary" href="index.html">العودة للرئيسية</a>';  
-
-    return;  
-  }  
-
-  const userData =  
-    doc.data();  
-
-  const role =  
-    String(  
-      userData.role || 'user'  
-    )  
-      .trim()  
-      .toLowerCase();  
-
-  console.log(  
-    'ADMIN ROLE:',  
-    role  
-  );  
-
-  if (  
-    !['admin', 'supervisor']  
-      .includes(role)  
-  ) {  
-
-    $('adminGate').innerHTML =  
-      'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +  
-      '<a class="btn primary" href="index.html">العودة للرئيسية</a>';  
-
-    return;  
-  }  
-
-  currentUserRole =  
-    role;  
-
-  currentPermissions =  
-    Array.isArray(  
-      userData.permissions  
-    )  
-      ? userData.permissions  
-      : [];  
-
-  $('adminGate').hidden =  
-    true;  
-
-  $('adminApp').hidden =  
-    false;  
-
-  $('adminEmail').textContent =  
-    'المشرف: ' +  
-    (user.email || '') +  
-    ' — ' +  
-    (  
-      currentUserRole === 'admin'  
-        ? 'مدير كامل'  
-        : 'مشرف متخصص'  
-    );  
-
-
-  // المشرف المتخصص  
-  if (  
-    currentUserRole !== 'admin'  
-  ) {  
-
-    $('filterCategory')  
-      .querySelectorAll('option')  
-      .forEach(o => {  
-
-        if (  
-          o.value !== 'all' &&  
-          !canManage(o.value)  
-        ) {  
-
-          o.hidden =  
-            true;  
-
-        }  
-
-      });  
-
-    $('category')  
-      .querySelectorAll('option')  
-      .forEach(o => {  
-
-        if (  
-          !canManage(o.value)  
-        ) {  
-
-          o.remove();  
-
-        }  
-
-      });  
-
-    $('supervisorsCard').hidden =  
-      true;  
-
-    const inquiriesCard =  
-      $('inquiriesList')  
-        .closest(  
-          '.admin-wide-card'  
-        );  
-
-    if (inquiriesCard) {  
-
-      inquiriesCard.hidden =  
-        !canManage(  
-          'inquiries'  
-        );  
-
-    }  
-
-    const canManagePosts =  
-      Object.keys(  
-        ADMIN_CATEGORIES  
-      ).some(  
-        canManage  
-      );  
-
-    $('postForm').hidden =  
-      !canManagePosts;  
-
-    const postsCard =  
-      $('postsList')  
-        .closest(  
-          '.admin-card'  
-        );  
-
-    if (postsCard) {  
-
-      postsCard.hidden =  
-        !canManagePosts;  
-
-    }  
-
-  }  
-
-
-  console.log(  
-    'ADMIN: جاري تحميل المنشورات...'  
-  );  
-
-  await loadPosts();  
-
-  console.log(  
-    'ADMIN: تم تحميل المنشورات.'  
-  );  
-
-
-  if (  
-    canManage('inquiries')  
-  ) {  
-
-    await loadInquiries();  
-
-    if (  
-      window.WasitNotifications  
-    ) {  
-
-      stopAdminNotifications =  
-        WasitNotifications  
-          .listenAdminInquiries(  
-            user,  
-            updateAdminNotificationBadge  
-          );  
-
-    }  
-
-  }  
-
-
-  if (  
-    typeof loadSupervisors ===  
-    'function' &&  
-    currentUserRole === 'admin'  
-  ) {  
-
-    await loadSupervisors();  
-
-  }  
-
-
-  if (  
-    typeof refreshDashboard ===  
-    'function'  
-  ) {  
-
-    await refreshDashboard();  
-
-  }  
-
-  console.log(  
-    'ADMIN: تم فتح لوحة التحكم بنجاح.'  
-  );  
-
-} catch (e) {  
-
-  console.error(  
-    'ADMIN ACCESS ERROR:',  
-    e  
-  );  
-
-  $('adminGate').innerHTML =  
-    'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +  
-    '<small>' +  
-    (  
-      e?.message ||  
-      e?.code ||  
-      'خطأ غير معروف'  
-    ) +  
-    '</small>';  
-
-}
-
-}
+  async user => {
+
+    console.log(
+      'ADMIN AUTH CHECK:',
+      user
+        ? user.uid
+        : 'NO USER'
+    );
+
+    if (!user) {
+
+      location.href =
+        'login.html?next=admin.html';
+
+      return;
+    }
+
+    currentUser =
+      user;
+
+    try {
+
+      console.log(
+        'ADMIN: جاري قراءة بيانات المستخدم...'
+      );
+
+      const doc =
+        await db
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      console.log(
+        'ADMIN USER DOC:',
+        doc.exists
+          ? doc.data()
+          : 'DOCUMENT NOT FOUND'
+      );
+
+      if (!doc.exists) {
+
+        $('adminGate').innerHTML =
+          'لم يتم العثور على بيانات المشرف في قاعدة البيانات.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+        return;
+      }
+
+      const userData =
+        doc.data();
+
+      const role =
+        String(
+          userData.role ||
+          'user'
+        )
+          .trim()
+          .toLowerCase();
+
+      console.log(
+        'ADMIN ROLE:',
+        role
+      );
+
+      if (
+        ![
+          'admin',
+          'supervisor'
+        ].includes(role)
+      ) {
+
+        $('adminGate').innerHTML =
+          'ليس لديك صلاحية للوصول إلى لوحة الإدارة.<br>' +
+          '<a class="btn primary" href="index.html">العودة للرئيسية</a>';
+
+        return;
+      }
+
+      currentUserRole =
+        role;
+
+      currentPermissions =
+        Array.isArray(
+          userData.permissions
+        )
+          ? userData.permissions
+          : [];
+
+      $('adminGate').hidden =
+        true;
+
+      $('adminApp').hidden =
+        false;
+
+      $('adminEmail').textContent =
+        'المشرف: ' +
+        (user.email || '') +
+        ' — ' +
+        (
+          currentUserRole === 'admin'
+            ? 'مدير كامل'
+            : 'مشرف متخصص'
+        );
+
+      // =================================================
+      // تحميل الأقسام الجديدة
+      // =================================================
+
+      await loadCustomCategories();
+
+      // =================================================
+      // المشرف المتخصص
+      // =================================================
+
+      if (
+        currentUserRole !== 'admin'
+      ) {
+
+        $('filterCategory')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              o.value !== 'all' &&
+              !canManage(o.value)
+            ) {
+
+              o.hidden =
+                true;
+            }
+          });
+
+        $('category')
+          .querySelectorAll('option')
+          .forEach(o => {
+
+            if (
+              !canManage(o.value)
+            ) {
+
+              o.remove();
+            }
+          });
+
+        $('supervisorsCard').hidden =
+          true;
+
+        const inquiriesCard =
+          $('inquiriesList')
+            .closest(
+              '.admin-wide-card'
+            );
+
+        if (inquiriesCard) {
+
+          inquiriesCard.hidden =
+            !canManage(
+              'inquiries'
+            );
+        }
+
+        const canManagePosts =
+          Object.keys(
+            ADMIN_CATEGORIES
+          ).some(
+            canManage
+          );
+
+        $('postForm').hidden =
+          !canManagePosts;
+
+        const postsCard =
+          $('postsList')
+            .closest(
+              '.admin-card'
+            );
+
+        if (postsCard) {
+
+          postsCard.hidden =
+            !canManagePosts;
+        }
+      }
+
+      // =================================================
+      // تحميل المنشورات
+      // =================================================
+
+      console.log(
+        'ADMIN: جاري تحميل المنشورات...'
+      );
+
+      await loadPosts();
+
+      console.log(
+        'ADMIN: تم تحميل المنشورات.'
+      );
+
+      // =================================================
+      // الاستفسارات
+      // =================================================
+
+      if (
+        canManage('inquiries')
+      ) {
+
+        await loadInquiries();
+
+        if (
+          window.WasitNotifications
+        ) {
+
+          stopAdminNotifications =
+            WasitNotifications
+              .listenAdminInquiries(
+                user,
+                updateAdminNotificationBadge
+              );
+        }
+      }
+
+      // =================================================
+      // المشرفون
+      // =================================================
+
+      if (
+        typeof loadSupervisors ===
+          'function' &&
+        currentUserRole ===
+          'admin'
+      ) {
+
+        await loadSupervisors();
+      }
+
+      // =================================================
+      // لوحة الإحصائيات
+      // =================================================
+
+      if (
+        typeof refreshDashboard ===
+          'function'
+      ) {
+
+        await refreshDashboard();
+      }
+
+      console.log(
+        'ADMIN: تم فتح لوحة التحكم بنجاح.'
+      );
+
+    } catch (e) {
+
+      console.error(
+        'ADMIN ACCESS ERROR:',
+        e
+      );
+
+      $('adminGate').innerHTML =
+        'حدث خطأ أثناء التحقق من صلاحيات المشرف.<br><br>' +
+        '<small>' +
+        (
+          e?.message ||
+          e?.code ||
+          'خطأ غير معروف'
+        ) +
+        '</small>';
+    }
+  }
 );
