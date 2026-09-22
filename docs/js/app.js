@@ -198,7 +198,7 @@
 
 
   // ====================================================
-  // زر تثبيت التطبيق
+  // نظام تثبيت التطبيق
   // ====================================================
 
   let deferredInstallPrompt = null;
@@ -207,12 +207,33 @@
 
 
   // ====================================================
+  // هل الموقع مفتوح كتطبيق مثبت؟
+  // ====================================================
+
+  function isAppInstalled() {
+
+    const standalone =
+      window.matchMedia &&
+      window.matchMedia(
+        '(display-mode: standalone)'
+      ).matches;
+
+    const iosStandalone =
+      window.navigator.standalone === true;
+
+    return (
+      standalone ||
+      iosStandalone
+    );
+  }
+
+
+  // ====================================================
   // إنشاء زر التثبيت داخل الهيدر
   // ====================================================
 
   function createInstallButton() {
 
-    // إذا الزر موجود مسبقاً لا ننشئ واحد ثاني
     if (
       document.getElementById(
         'installAppButton'
@@ -236,10 +257,6 @@
     }
 
 
-    // ------------------------------------------
-    // إنشاء الزر
-    // ------------------------------------------
-
     const button =
       document.createElement('button');
 
@@ -254,7 +271,7 @@
 
 
     // ------------------------------------------
-    // تنسيق الزر
+    // شكل الزر
     // ------------------------------------------
 
     button.style.border =
@@ -291,73 +308,73 @@
       'nowrap';
 
     button.style.display =
-      'none';
+      'inline-block';
 
 
     // ------------------------------------------
-    // الضغط على الزر
+    // الضغط على زر التثبيت
     // ------------------------------------------
 
     button.addEventListener(
       'click',
       async function () {
 
-        if (!deferredInstallPrompt) {
+        // --------------------------------------
+        // إذا Chrome أعطانا نافذة التثبيت
+        // --------------------------------------
+
+        if (deferredInstallPrompt) {
+
+          try {
+
+            deferredInstallPrompt.prompt();
+
+            const choice =
+              await deferredInstallPrompt.userChoice;
+
+            console.log(
+              'INSTALL CHOICE:',
+              choice.outcome
+            );
+
+            if (
+              choice.outcome ===
+              'accepted'
+            ) {
+
+              button.style.display =
+                'none';
+            }
+
+          } catch (error) {
+
+            console.warn(
+              'INSTALL PROMPT ERROR:',
+              error
+            );
+
+          }
+
+          deferredInstallPrompt =
+            null;
+
           return;
         }
 
 
-        // إظهار نافذة التثبيت الأصلية
-        deferredInstallPrompt.prompt();
+        // --------------------------------------
+        // إذا لا توجد نافذة تثبيت أصلية
+        // --------------------------------------
 
-
-        try {
-
-          const choice =
-            await deferredInstallPrompt.userChoice;
-
-          console.log(
-            'INSTALL CHOICE:',
-            choice.outcome
-          );
-
-
-          // إذا المستخدم اختار التثبيت
-          if (
-            choice.outcome ===
-            'accepted'
-          ) {
-
-            button.style.display =
-              'none';
-          }
-
-        } catch (error) {
-
-          console.warn(
-            'INSTALL PROMPT ERROR:',
-            error
-          );
-
-        }
-
-
-        // لا نعيد استخدام نفس الطلب
-        deferredInstallPrompt =
-          null;
+        showInstallInstructions();
 
       }
     );
 
 
-    // ------------------------------------------
-    // نضيفه داخل قائمة الهيدر
-    // ------------------------------------------
-
     nav.appendChild(
       button
     );
-
 
     installButton =
       button;
@@ -365,26 +382,44 @@
 
 
   // ====================================================
-  // فحص هل الموقع مفتوح كتطبيق مثبت
+  // تعليمات التثبيت اليدوي
   // ====================================================
 
-  function isAppInstalled() {
+  function showInstallInstructions() {
 
-    const standalone =
-      window.matchMedia &&
-      window.matchMedia(
-        '(display-mode: standalone)'
-      ).matches;
-
-
-    const iosStandalone =
-      window.navigator.standalone === true;
+    // إذا كان التطبيق مثبتاً بالفعل
+    if (isAppInstalled()) {
+      return;
+    }
 
 
-    return (
-      standalone ||
-      iosStandalone
-    );
+    const isIOS =
+      /iphone|ipad|ipod/i.test(
+        navigator.userAgent
+      );
+
+
+    let message = '';
+
+
+    if (isIOS) {
+
+      message =
+        'لتثبيت فريق شمال واسط على الآيفون:\\n\\n' +
+        'اضغط زر المشاركة في المتصفح، ثم اختر:\\n' +
+        'إضافة إلى الشاشة الرئيسية.';
+
+    } else {
+
+      message =
+        'لتثبيت فريق شمال واسط:\\n\\n' +
+        'افتح قائمة المتصفح ⋮ ثم اختر:\\n' +
+        'تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.';
+
+    }
+
+
+    alert(message);
   }
 
 
@@ -403,7 +438,7 @@
 
 
     // ------------------------------------------
-    // إذا التطبيق مثبت مسبقاً
+    // إذا التطبيق مثبت
     // ------------------------------------------
 
     if (isAppInstalled()) {
@@ -416,34 +451,32 @@
 
 
     // ------------------------------------------
-    // Chrome أصبح جاهزاً للتثبيت
+    // الزر يظهر مباشرة
+    // ------------------------------------------
+
+    installButton.style.display =
+      'inline-block';
+
+
+    // ------------------------------------------
+    // عندما يصبح Chrome جاهزاً للتثبيت
     // ------------------------------------------
 
     window.addEventListener(
       'beforeinstallprompt',
       function (event) {
 
-        // نمنع Chrome من إظهار
-        // نافذة التثبيت تلقائياً
-
         event.preventDefault();
-
 
         deferredInstallPrompt =
           event;
-
-
-        // إظهار الزر داخل الهيدر
-
-        installButton.style.display =
-          'inline-block';
 
       }
     );
 
 
     // ------------------------------------------
-    // تم تثبيت التطبيق
+    // بعد نجاح التثبيت
     // ------------------------------------------
 
     window.addEventListener(
@@ -453,14 +486,12 @@
         deferredInstallPrompt =
           null;
 
-
         if (installButton) {
 
           installButton.style.display =
             'none';
 
         }
-
 
         console.log(
           'APP INSTALLED'
