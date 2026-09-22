@@ -80,7 +80,6 @@
             ).trim().toLowerCase()
           : 'user';
 
-        // المدير أو المشرف
         if (
           role === 'admin' ||
           role === 'supervisor'
@@ -204,16 +203,42 @@
 
   let deferredInstallPrompt = null;
 
+  let installButton = null;
+
+
+  // ====================================================
+  // إنشاء زر التثبيت داخل الهيدر
+  // ====================================================
+
   function createInstallButton() {
 
-    // لا ننشئ الزر أكثر من مرة
+    // إذا الزر موجود مسبقاً لا ننشئ واحد ثاني
     if (
       document.getElementById(
         'installAppButton'
       )
     ) {
+
+      installButton =
+        document.getElementById(
+          'installAppButton'
+        );
+
       return;
     }
+
+
+    const nav =
+      document.getElementById('mainNav');
+
+    if (!nav) {
+      return;
+    }
+
+
+    // ------------------------------------------
+    // إنشاء الزر
+    // ------------------------------------------
 
     const button =
       document.createElement('button');
@@ -227,42 +252,34 @@
     button.textContent =
       '📲 تثبيت التطبيق';
 
+
     // ------------------------------------------
-    // تصميم الزر
+    // تنسيق الزر
     // ------------------------------------------
-
-    button.style.position =
-      'fixed';
-
-    button.style.bottom =
-      '20px';
-
-    button.style.right =
-      '20px';
-
-    button.style.zIndex =
-      '9999';
 
     button.style.border =
-      '0';
+      '1px solid rgba(53,210,207,.45)';
 
     button.style.borderRadius =
-      '14px';
+      '10px';
 
     button.style.padding =
-      '12px 18px';
+      '9px 13px';
+
+    button.style.margin =
+      '4px 0';
 
     button.style.background =
-      '#35d2cf';
+      'rgba(53,210,207,.12)';
 
     button.style.color =
-      '#06151b';
+      '#35d2cf';
 
     button.style.fontFamily =
       'inherit';
 
     button.style.fontSize =
-      '15px';
+      '14px';
 
     button.style.fontWeight =
       '700';
@@ -270,14 +287,15 @@
     button.style.cursor =
       'pointer';
 
-    button.style.boxShadow =
-      '0 8px 25px rgba(0,0,0,.30)';
+    button.style.whiteSpace =
+      'nowrap';
 
     button.style.display =
       'none';
 
+
     // ------------------------------------------
-    // الضغط على زر التثبيت
+    // الضغط على الزر
     // ------------------------------------------
 
     button.addEventListener(
@@ -288,7 +306,10 @@
           return;
         }
 
+
+        // إظهار نافذة التثبيت الأصلية
         deferredInstallPrompt.prompt();
+
 
         try {
 
@@ -300,70 +321,129 @@
             choice.outcome
           );
 
+
+          // إذا المستخدم اختار التثبيت
+          if (
+            choice.outcome ===
+            'accepted'
+          ) {
+
+            button.style.display =
+              'none';
+          }
+
         } catch (error) {
 
           console.warn(
-            'INSTALL PROMPT:',
+            'INSTALL PROMPT ERROR:',
             error
           );
 
         }
 
+
+        // لا نعيد استخدام نفس الطلب
         deferredInstallPrompt =
           null;
-
-        button.style.display =
-          'none';
 
       }
     );
 
-    document.body.appendChild(
+
+    // ------------------------------------------
+    // نضيفه داخل قائمة الهيدر
+    // ------------------------------------------
+
+    nav.appendChild(
       button
+    );
+
+
+    installButton =
+      button;
+  }
+
+
+  // ====================================================
+  // فحص هل الموقع مفتوح كتطبيق مثبت
+  // ====================================================
+
+  function isAppInstalled() {
+
+    const standalone =
+      window.matchMedia &&
+      window.matchMedia(
+        '(display-mode: standalone)'
+      ).matches;
+
+
+    const iosStandalone =
+      window.navigator.standalone === true;
+
+
+    return (
+      standalone ||
+      iosStandalone
     );
   }
 
 
   // ====================================================
-  // مراقبة إمكانية تثبيت التطبيق
+  // تشغيل نظام التثبيت
   // ====================================================
 
   function initInstallPrompt() {
 
     createInstallButton();
 
-    const button =
-      document.getElementById(
-        'installAppButton'
-      );
 
-    if (!button) {
+    if (!installButton) {
       return;
     }
 
+
     // ------------------------------------------
-    // المتصفح أصبح يسمح بالتثبيت
+    // إذا التطبيق مثبت مسبقاً
+    // ------------------------------------------
+
+    if (isAppInstalled()) {
+
+      installButton.style.display =
+        'none';
+
+      return;
+    }
+
+
+    // ------------------------------------------
+    // Chrome أصبح جاهزاً للتثبيت
     // ------------------------------------------
 
     window.addEventListener(
       'beforeinstallprompt',
       function (event) {
 
-        // منع Chrome من إظهار النافذة
-        // بشكل تلقائي
+        // نمنع Chrome من إظهار
+        // نافذة التثبيت تلقائياً
+
         event.preventDefault();
+
 
         deferredInstallPrompt =
           event;
 
-        button.style.display =
-          'block';
+
+        // إظهار الزر داخل الهيدر
+
+        installButton.style.display =
+          'inline-block';
 
       }
     );
 
+
     // ------------------------------------------
-    // بعد تثبيت التطبيق
+    // تم تثبيت التطبيق
     // ------------------------------------------
 
     window.addEventListener(
@@ -373,8 +453,14 @@
         deferredInstallPrompt =
           null;
 
-        button.style.display =
-          'none';
+
+        if (installButton) {
+
+          installButton.style.display =
+            'none';
+
+        }
+
 
         console.log(
           'APP INSTALLED'
@@ -382,29 +468,6 @@
 
       }
     );
-
-    // ------------------------------------------
-    // إذا كان الموقع مفتوحاً كتطبيق
-    // فلا نعرض زر التثبيت
-    // ------------------------------------------
-
-    const standalone =
-      window.matchMedia &&
-      window.matchMedia(
-        '(display-mode: standalone)'
-      ).matches;
-
-    const iosStandalone =
-      window.navigator.standalone === true;
-
-    if (
-      standalone ||
-      iosStandalone
-    ) {
-
-      button.style.display =
-        'none';
-    }
   }
 
 
@@ -415,7 +478,9 @@
   function start() {
 
     initMenu();
+
     waitForFirebase();
+
     initInstallPrompt();
 
   }
