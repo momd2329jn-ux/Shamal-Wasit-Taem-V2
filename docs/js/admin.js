@@ -1314,10 +1314,198 @@ async function loadInquiries() {
       '</div>';
   }
 }
+// ======================================================
+// أعضاء الفريق
+// ======================================================
 
+async function loadMembers() {
+
+  const box = $('membersList');
+
+  if (!box) return;
+
+  box.innerHTML =
+    '<div class="empty-state">جاري تحميل الأعضاء...</div>';
+
+  try {
+
+    // --------------------------------------------------
+    // الأعضاء متاحون للمدير الكامل فقط
+    // --------------------------------------------------
+
+    if (currentUserRole !== 'admin') {
+
+      box.innerHTML =
+        '<div class="empty-state">' +
+        'لا تملك صلاحية عرض أعضاء الفريق.' +
+        '</div>';
+
+      return;
+    }
+
+    const snap =
+      await db
+        .collection('users')
+        .get();
+
+    const members =
+      snap.docs
+        .map(doc => ({
+          id: doc.id,
+          data: doc.data()
+        }))
+        .filter(member =>
+          member.data.role !== 'admin'
+        )
+        .sort((a, b) => {
+
+          const aTime =
+            a.data.createdAt?.toMillis?.() || 0;
+
+          const bTime =
+            b.data.createdAt?.toMillis?.() || 0;
+
+          return bTime - aTime;
+        });
+
+    if (!members.length) {
+
+      box.innerHTML =
+        '<div class="empty-state">' +
+        'لا يوجد أعضاء مسجلون حاليًا.' +
+        '</div>';
+
+      return;
+    }
+
+    box.innerHTML =
+      members.map(member => {
+
+        const d = member.data;
+
+        const role =
+          String(d.role || 'user')
+            .trim()
+            .toLowerCase();
+
+        let roleText = 'عضو';
+
+        if (role === 'supervisor') {
+          roleText = 'مشرف متخصص';
+        }
+
+        if (role === 'admin') {
+          roleText = 'مدير كامل';
+        }
+
+        return `
+          <article class="admin-member">
+
+            <div class="admin-member-info">
+
+              <div class="admin-member-head">
+
+                <div class="admin-member-avatar">
+                  👤
+                </div>
+
+                <div>
+                  <h4>
+                    ${esc(d.fullName || 'بدون اسم')}
+                  </h4>
+
+                  <span class="post-meta">
+                    ${esc(roleText)}
+                  </span>
+                </div>
+
+              </div>
+
+              <div class="admin-member-details">
+
+                <div>
+                  <strong>📱 الهاتف</strong>
+                  <span>
+                    ${esc(d.phone || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>📧 البريد الإلكتروني</strong>
+                  <span>
+                    ${esc(d.email || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>🎓 الاختصاص</strong>
+                  <span>
+                    ${esc(d.specialization || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>💼 المهنة</strong>
+                  <span>
+                    ${esc(d.profession || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>🎂 تاريخ الميلاد</strong>
+                  <span>
+                    ${esc(d.birthDate || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>📚 المستوى التعليمي</strong>
+                  <span>
+                    ${esc(d.education || 'غير مسجل')}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>📅 تاريخ التسجيل</strong>
+                  <span>
+                    ${
+                      d.createdAt
+                        ? esc(dateText(d.createdAt))
+                        : 'غير معروف'
+                    }
+                  </span>
+                </div>
+
+              </div>
+
+            </div>
+
+          </article>
+        `;
+
+      }).join('');
+
+  } catch (error) {
+
+    console.error(
+      'LOAD MEMBERS ERROR:',
+      error
+    );
+
+    box.innerHTML =
+      '<div class="empty-state">' +
+      'تعذر تحميل بيانات الأعضاء.' +
+      '</div>';
+  }
+}
 // ======================================================
 // الأحداث
 // ======================================================
+const refreshMembersButton = $('refreshMembers');
+
+if (refreshMembersButton) {
+  refreshMembersButton.addEventListener('click', loadMembers);
+}
 
 $('category').addEventListener(
   'change',
