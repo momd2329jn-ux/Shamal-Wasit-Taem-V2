@@ -7,74 +7,215 @@ service cloud.firestore {
     // المستخدمون
     // ==========================================
     match /users/{userId} {
+
       // المستخدم يقرأ بياناته
-      allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // المدير يقرأ كل المستخدمين
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      // المدير يقرأ جميع المستخدمين
+      allow read: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
+
       // المستخدم ينشئ حسابه
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // المستخدم يعدّل بياناته (ما عدا الدور والصلاحيات)
-      allow update: if request.auth != null && 
-        request.auth.uid == userId &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions']);
-      
-      // المدير يعدّل أي حساب
-      allow update: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.auth != null
+        && request.auth.uid == userId;
+
+      // المستخدم يعدّل بياناته
+      // ولا يستطيع تغيير role أو permissions
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasAny(['role', 'permissions']);
+
+      // المدير يستطيع تعديل أي حساب
+      allow update: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
     }
+
 
     // ==========================================
     // الاستفسارات
     // ==========================================
     match /inquiries/{inquiryId} {
-      // المستخدم المسجّل أو المجهول يقرأ استفساراته
+
+      // المستخدم المسجل أو المجهول يستطيع القراءة
       allow read: if request.auth != null;
-      
-      // أي مستخدم مسجّل (أو مجهول) ينشئ استفسار
+
+      // المستخدم المسجل أو المجهول يستطيع إنشاء استفسار
       allow create: if request.auth != null;
-      
-      // المدير والمشرف المختص يعدّلون
-      allow update: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        'inquiries' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions
-      );
-      
-      // المدير يحذف
-      allow delete: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // المدير أو المشرف الذي لديه صلاحية inquiries
+      // يستطيع تعديل الاستفسارات
+      allow update: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'inquiries' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
+        );
+
+      // المدير فقط يحذف
+      allow delete: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
     }
 
+
     // ==========================================
-    // الأقسام (الأخبار، الفعاليات، المقالات، الصحة، البيئة)
+    // الأخبار
     // ==========================================
-    match /{collection}/{docId} {
-      where collection in ['news', 'events', 'articles', 'health', 'environment'] {
-        
-        // الجميع يقرأ
-        allow read: if true;
-        
-        // المدير والمشرف المختص ينشئون ويعدّلون ويحذفون
-        allow write: if request.auth != null && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          collection in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions
+    match /news/{docId} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'news' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
         );
-      }
     }
+
+
+    // ==========================================
+    // الفعاليات
+    // ==========================================
+    match /events/{docId} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'events' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
+        );
+    }
+
+
+    // ==========================================
+    // المقالات
+    // ==========================================
+    match /articles/{docId} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'articles' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
+        );
+    }
+
+
+    // ==========================================
+    // الصحة
+    // ==========================================
+    match /health/{docId} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'health' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
+        );
+    }
+
+
+    // ==========================================
+    // البيئة
+    // ==========================================
+    match /environment/{docId} {
+
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && (
+          get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.role == 'admin'
+          ||
+          'environment' in get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.permissions
+        );
+    }
+
+
+    // ==========================================
+    // الأقسام الديناميكية
+    // ==========================================
+    match /siteCategories/{categoryId} {
+
+      // الجميع يستطيع رؤية الأقسام الفعالة
+      // القراءة العامة مطلوبة للصفحة الرئيسية
+      allow read: if true;
+
+      // المدير فقط ينشئ ويعدل ويحذف الأقسام
+      allow write: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
+    }
+
+
+    // ==========================================
+    // منشورات الأقسام الديناميكية
+    // ==========================================
+    match /siteCategoryPosts/{postId} {
+
+      // الجميع يستطيع قراءة المنشورات
+      allow read: if true;
+
+      // المدير فقط ينشئ ويعدل ويحذف
+      allow write: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
+    }
+
 
     // ==========================================
     // أيقونات الفريق
     // ==========================================
     match /siteIcons/{iconId} {
+
       // الجميع يقرأ
       allow read: if true;
-      
+
       // المدير فقط يعدّل
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == 'admin';
     }
 
   }
