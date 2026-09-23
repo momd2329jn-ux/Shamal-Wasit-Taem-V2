@@ -339,9 +339,10 @@ select{
 
 .post-grid{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:1fr;
   gap:28px;
   align-items:start;
+  width:100%;
 }
 
 .post-card{
