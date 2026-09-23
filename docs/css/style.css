@@ -1276,11 +1276,6 @@ select{
   .hero{
     min-height:700px;
   }
-
-  .post-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
   .admin-layout{
     grid-template-columns:1fr;
   }
