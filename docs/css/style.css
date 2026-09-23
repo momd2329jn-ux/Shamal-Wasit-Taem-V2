@@ -339,7 +339,7 @@ select{
 
 .post-grid{
   display:grid;
-  grid-template-columns:1fr;
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:28px;
   align-items:start;
   width:100%;
@@ -356,15 +356,14 @@ select{
   margin:0;
 }
 
-/* صورة المنشور */
 .post-card img{
   display:block;
   width:100%;
-  height:220px;
-  object-fit:cover;
+  height:190px;
+  object-fit:contain;
+  background:rgba(0,0,0,.15);
 }
 
-/* محتوى المنشور */
 .post-body{
   padding:20px;
 }
@@ -380,7 +379,6 @@ select{
   font-size:19px;
 }
 
-/* النص يظهر كامل */
 .post-card p{
   margin:0;
   color:var(--muted);
@@ -389,8 +387,9 @@ select{
   white-space:pre-wrap;
   display:block;
   overflow:visible;
+  word-break:normal;
+  overflow-wrap:break-word;
 }
-
 /* =========================
    عن الفريق
 ========================= */
